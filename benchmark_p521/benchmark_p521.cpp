@@ -25,7 +25,7 @@
 #define MICRO_ITERS 1000
 
 // -----------------------------------------------------------
-// Struct for benchmarking time and cpu cycles (PQ-Style)
+// Struct for benchmarking time and cpu cycles 
 // -----------------------------------------------------------
 struct BenchResult {
     uint64_t cycles;
