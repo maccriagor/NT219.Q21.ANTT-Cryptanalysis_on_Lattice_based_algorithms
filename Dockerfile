@@ -113,10 +113,17 @@ RUN set -e; \
 FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y \
+    python3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy the binary from the builder stage
 COPY --from=builder /app/app .
+# Copy the runner script into this stage
+COPY runner.py .
+# Copy your input file
+COPY file.txt .
 
 CMD ["python3", "runner.py"]
