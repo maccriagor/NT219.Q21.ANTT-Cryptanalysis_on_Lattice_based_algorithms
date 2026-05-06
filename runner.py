@@ -4,7 +4,7 @@ import os
 
 # --- Configuration ---
 DOCKER_IMAGE = "my-app"
-INPUT_FILE = "input.txt"
+INPUT_FILE = "file.txt"
 OUTPUT_CSV = "benchmark_results.csv"
 
 def run_benchmark():
