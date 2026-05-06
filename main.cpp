@@ -317,7 +317,7 @@ int main() {
             << v_data.cycles << "," << v_data.ns << "," 
             << e_data.cycles << "," << e_data.ns << ","
             << d_data.cycles << "," << d_data.ns << std::endl;
-
+std::cout.flush();
         //----------------------------------------------------------------------------------------
         
         //Deleting private data after message exchange
