@@ -1,0 +1,22 @@
+name: ARM64 Performance Benchmark
+on: [push, workflow_dispatch]
+
+jobs:
+  benchmark-arm:
+    runs-on: ubuntu-24.04-arm # This triggers the free ARM64 runner
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Benchmark Script
+        run: |
+          chmod +x run_all.sh
+          ./run_all.sh > results_arm64.csv
+
+      - name: Upload Results & Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-arm64
+          path: |
+            results_arm64.csv
+            app_arm_binary
