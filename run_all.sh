@@ -12,7 +12,7 @@ docker build -t pqc-app .
 # 3. Run Benchmark and Capture CSV
 # We use 'tee' so we can see progress in the GitHub logs
 echo "Running Benchmark..."
-docker run --rm -i pqc-app < file.txt | tee benchmark_output.log
+docker run --rm -i -t pqc-app < file.txt | tee benchmark_output.log
 
 # 4. Extract Binary for Stage 3 Analysis
 echo "Extracting ARM64 binary..."
