@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 #include <iomanip>
+#include <cstdint>
 #include <chrono>
 #include <stdint.h>
 //Openssl 
@@ -37,14 +38,28 @@ struct BenchResult {
 
 // 2. Define the serialize and get_cycles functions
 static inline void serialize() {
-    unsigned int a, b, c, d;
-    __asm__ __volatile__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(0));
+    #if defined(__x86_64__) || defined(_M_X64)
+        unsigned int a, b, c, d;
+        __asm__ __volatile__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(0));
+    #elif defined(__aarch64__)
+        // ARM64 Full System Memory Barrier
+        __asm__ __volatile__("dmb sy" ::: "memory");
+    #endif
 }
 
 static inline uint64_t get_cycles() {
-    unsigned int lo, hi;
-    __asm__ __volatile__("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t)hi << 32) | lo;
+    #if defined(__x86_64__) || defined(_M_X64)
+        unsigned int lo, hi;
+        __asm__ __volatile__("rdtsc" : "=a" (lo), "=d" (hi));
+        return ((uint64_t)hi << 32) | lo;
+    #elif defined(__aarch64__)
+        uint64_t val;
+        // Read ARM64 System Timer
+        __asm__ __volatile__("mrs %0, cntvct_el0" : "=r" (val));
+        return val;
+    #else
+        return 0; // Fallback
+    #endif
 }
 
 // 3. Define the template function SECOND
