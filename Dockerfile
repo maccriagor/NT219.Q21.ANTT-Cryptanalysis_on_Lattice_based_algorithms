@@ -101,7 +101,7 @@ RUN set -e; \
         -I. \
         -Ikem -Isign -Icommon \
         -I/opt/openssl/include \
-        -L/opt/openssl/lib64 \
+        -L/opt/openssl/lib -L/opt/openssl/lib64 \
         -lssl -lcrypto \
         -lpthread -ldl \
         -o app
