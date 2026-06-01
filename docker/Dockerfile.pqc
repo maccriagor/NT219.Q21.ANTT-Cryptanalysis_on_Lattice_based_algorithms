@@ -1,0 +1,51 @@
+# docker/Dockerfile.pqc — Môi trường build PQC cho WP1
+# OpenSSL 3.6.2 (mới nhất, có ML-KEM/ML-DSA NATIVE) build từ nguồn + liboqs (cho microbench/NEON).
+# KHÔNG dùng oqs-provider: trên OpenSSL >= 3.5 nó bị disable cho ML-KEM/ML-DSA (native thắng).
+# Dùng CHUNG arm64 (Pi 4) + amd64 (x86) — build NATIVE trên từng nền (ossl-modules/arch tự đúng).
+#   Build:   docker build -t pqc:wp1 -f docker/Dockerfile.pqc .
+#   Env:     docker run --rm -v "$PWD/data:/data" pqc:wp1 capture_env.sh
+FROM debian:bookworm-slim
+
+# Pin version để tái lập (rubric 25%)
+ARG OPENSSL_VER=3.6.2
+ARG LIBOQS_TAG=0.12.0
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH=/opt/openssl/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/openssl/lib
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential perl cmake ninja-build git pkg-config wget ca-certificates procps \
+      python3 python3-pytest python3-pytest-xdist \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/build
+
+# 1) OpenSSL 3.6.2 từ nguồn (native ML-KEM/ML-DSA) + verify SHA256 (tài liệu chính thống)
+RUN wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VER}/openssl-${OPENSSL_VER}.tar.gz" \
+ && wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VER}/openssl-${OPENSSL_VER}.tar.gz.sha256" \
+ && echo "$(cut -d' ' -f1 openssl-${OPENSSL_VER}.tar.gz.sha256)  openssl-${OPENSSL_VER}.tar.gz" | sha256sum -c - \
+ && tar xf "openssl-${OPENSSL_VER}.tar.gz" \
+ && cd "openssl-${OPENSSL_VER}" \
+ && ./config --prefix=/opt/openssl --openssldir=/opt/openssl/ssl --libdir=lib shared \
+ && make -j"$(nproc)" \
+ && make install_sw install_ssldirs \
+ && echo /opt/openssl/lib > /etc/ld.so.conf.d/openssl.conf && ldconfig \
+ && cd / && rm -rf /opt/build/openssl-${OPENSSL_VER}*
+
+# 2) liboqs (shared) dùng OpenSSL 3.6.2; OQS_DIST_BUILD=ON tự dò NEON lúc chạy
+RUN git clone --depth 1 --branch ${LIBOQS_TAG} https://github.com/open-quantum-safe/liboqs.git \
+ && cmake -GNinja -S liboqs -B liboqs/build \
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+      -DOQS_DIST_BUILD=ON -DOPENSSL_ROOT_DIR=/opt/openssl \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+ && ninja -C liboqs/build && ninja -C liboqs/build install && ldconfig
+
+# 3) Script ghi env + ghi version (tái lập). speed_kem/speed_sig ở /opt/build/liboqs/build/tests/
+COPY scripts/capture_env.sh scripts/verify.sh /usr/local/bin/
+RUN sed -i 's/\r$//' /usr/local/bin/capture_env.sh /usr/local/bin/verify.sh \
+ && chmod +x /usr/local/bin/capture_env.sh /usr/local/bin/verify.sh \
+ && { echo "openssl: $(openssl version)"; echo "liboqs: ${LIBOQS_TAG}"; \
+      gcc --version | head -1; } > /opt/build/versions.txt
+
+WORKDIR /data
+CMD ["bash"]
