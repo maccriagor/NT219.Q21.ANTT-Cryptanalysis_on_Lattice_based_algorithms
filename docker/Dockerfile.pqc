@@ -1,6 +1,6 @@
-# Môi trường build PQC: OpenSSL 3.6.2 (ML-KEM/ML-DSA native) + liboqs.
+# Môi trường build PQC: OpenSSL 3.6.2 (ML-KEM/ML-DSA native) + liboqs + PQClean (reference).
 # Một Dockerfile dùng chung arm64 và amd64 — build native trên từng máy.
-# OpenSSL >= 3.5 đã cung cấp ML-KEM/ML-DSA native nên không dùng oqs-provider.
+# OpenSSL >= 3.5 đã cung cấp ML-KEM/ML-DSA native nên không dùng oqs-provider / OQS-OpenSSL fork (đã deprecated).
 #   Build:  docker build -t pqc:wp1 -f docker/Dockerfile.pqc .
 #   Env:    docker run --rm -v "$PWD/data:/data" pqc:wp1 capture_env.sh
 FROM debian:bookworm-slim
@@ -38,10 +38,15 @@ RUN git clone --depth 1 --branch ${LIBOQS_TAG} https://github.com/open-quantum-s
       -DCMAKE_INSTALL_PREFIX=/usr/local \
  && ninja -C liboqs/build && ninja -C liboqs/build install && ldconfig
 
+# 2b) PQClean — bản tham chiếu portable C ("clean"). Nguồn để biên dịch trực tiếp,
+#     dùng làm baseline reference khi so với bản tối ưu NEON. (liboqs vốn import code từ đây.)
+RUN git clone --depth 1 https://github.com/PQClean/PQClean.git /opt/pqclean
+
 # 3) Script ghi cấu hình máy + ghi lại phiên bản đã pin
 COPY scripts/capture_env.sh /usr/local/bin/capture_env.sh
 RUN sed -i 's/\r$//' /usr/local/bin/capture_env.sh && chmod +x /usr/local/bin/capture_env.sh \
  && { echo "openssl: $(openssl version)"; echo "liboqs: ${LIBOQS_TAG}"; \
+      echo "pqclean: $(git -C /opt/pqclean rev-parse --short HEAD)"; \
       gcc --version | head -1; } > /opt/build/versions.txt
 
 WORKDIR /data
