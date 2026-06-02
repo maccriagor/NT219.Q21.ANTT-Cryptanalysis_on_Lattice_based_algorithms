@@ -40,7 +40,9 @@
 # debug information files
 *.dwo
 
-// Generated files
+# Generated / large
 *.log
-*.md
-*.txt
+
+# Nguồn vendored (tái tạo bằng scripts/fetch_sources.sh) + kết quả chạy
+vendor/
+data/

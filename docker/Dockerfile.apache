@@ -1,0 +1,37 @@
+# Apache httpd build từ nguồn, LINK với OpenSSL 3.6.2 -> mod_ssl có PQC native (ML-KEM/ML-DSA).
+# FROM image pqc (đã có /opt/openssl 3.6.2 + build tools). Nguồn httpd/apr vendored (mạng Pi chặn HTTPS).
+#   Build: docker build --build-arg BASE_IMAGE=pqc:wp1-arm64 -t pqc-apache -f docker/Dockerfile.apache .
+ARG BASE_IMAGE=pqc:wp1-arm64
+FROM ${BASE_IMAGE}
+
+ARG HTTPD_VER=2.4.62
+ARG APR_VER=1.7.5
+ARG APRUTIL_VER=1.6.3
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libpcre2-dev libexpat1-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/build
+COPY vendor/httpd-${HTTPD_VER}.tar.gz vendor/apr-${APR_VER}.tar.gz vendor/apr-util-${APRUTIL_VER}.tar.gz ./
+RUN tar xf httpd-${HTTPD_VER}.tar.gz && tar xf apr-${APR_VER}.tar.gz && tar xf apr-util-${APRUTIL_VER}.tar.gz \
+ && mv apr-${APR_VER} httpd-${HTTPD_VER}/srclib/apr \
+ && mv apr-util-${APRUTIL_VER} httpd-${HTTPD_VER}/srclib/apr-util \
+ && cd httpd-${HTTPD_VER} \
+ && ./configure --prefix=/opt/httpd \
+      --enable-ssl --with-ssl=/opt/openssl \
+      --enable-so --with-included-apr \
+      --enable-mods-shared="ssl socache_shmcb headers mime dir log_config authz_core unixd mpm_event" \
+ && make -j"$(nproc)" && make install \
+ && cd / && rm -rf /opt/build/httpd-* /opt/build/apr-*
+
+# Cấu hình PQC TLS + script sinh chứng chỉ ML-DSA
+COPY apache/httpd-pqc.conf /opt/httpd/conf/httpd-pqc.conf
+COPY apache/gen-cert.sh /usr/local/bin/gen-cert.sh
+RUN sed -i 's/\r$//' /usr/local/bin/gen-cert.sh /opt/httpd/conf/httpd-pqc.conf 2>/dev/null || true; \
+    chmod +x /usr/local/bin/gen-cert.sh; \
+    echo '<html><body><h1>PQC TLS demo via Apache + OpenSSL 3.6.2</h1></body></html>' > /opt/httpd/htdocs/index.html
+
+EXPOSE 4443
+# Sinh chứng chỉ ML-DSA (nếu chưa có) rồi chạy httpd foreground
+CMD ["/bin/sh","-c","[ -f /opt/httpd/conf/server.crt ] || gen-cert.sh; exec /opt/httpd/bin/httpd -D FOREGROUND -f /opt/httpd/conf/httpd-pqc.conf"]

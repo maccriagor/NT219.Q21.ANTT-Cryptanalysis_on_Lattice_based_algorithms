@@ -1,0 +1,57 @@
+**Có, đúng** — đã đối chiếu lại từng WP với điều khoản gốc trong file 05. Bảng truy vết bên dưới ghi rõ mỗi việc bắt nguồn từ mục nào.
+
+# Bảng truy vết: WP → mục yêu cầu trong file 05
+
+| WP / Việc | Mục file 05 (yêu cầu nguyên văn) |
+|---|---|
+| **WP0 — Background toán học (LWE → Ring-LWE → Module-LWE/SIS)** | §5 *"Lattice-based crypto: dựa trên các bài toán khó như LWE / Module-LWE, Ring-LWE…"* |
+| **WP0 — Literature review ≥6 nguồn** | §6 *"liệt kê tối thiểu 6 tài liệu học thuật/technical-reports và repo mã nguồn (liboqs, PQClean, OpenSSL-OQS, pqm4)"* |
+| **WP0 — Map mức an toàn (Cat 1/3/5)** | §5 lưu ý *"sinh viên nên mô tả các set tham số (Kyber512/768/1024, Dilithium2/3/5) và map tới mức bảo mật tương đương"* + §9 *"Security/parameter mapping… để so sánh công bằng"* |
+| **WP0 — Tuần 1–2** | §10 *"Literature review, select parameter sets & baselines, procure devices"* |
+| **WP1 — Comparison matrix (algos × params × platforms × workloads)** | §7.1 toàn mục: liệt kê chính xác Kyber 512/768/1024, Dilithium 2/3/5, RSA 2048/3072, ECDSA/ECDH P-256/P-384, optional Ed25519, **platforms x86_64 + ARM SBC**, **workloads micro + TLS + code size + memory + energy** |
+| **WP2 — Procure phần cứng (x86, Pi 4, INA/Monsoon)** | §8.1 *"Server x86_64 ≥4 cores, 8+GB RAM; Raspberry Pi 4 (aarch64)… Monsoon power meter hoặc INA219"* |
+| **WP2 — Stack tooling (liboqs, PQClean, OpenSSL, CMake, Docker, perf, wrk)** | §7.2 + §8.2 (liệt kê đủ) |
+| **WP2 — Build script reproducible + Dockerfile + cross-compile + flags + governor** | §7.3 *"Use reproducible build scripts (Bash/Make/CMake). Provide Dockerfile cho x86_64, và docker buildx multiarch hoặc separate cross-compile scripts (aarch64-linux-gnu toolchain). Document compiler versions, flags (-O2/-O3 -march=native), và CPU governor settings"* |
+| **WP2 — Tuần 3–4** | §10 *"Clone repos, build toolchain, implement reproducible build scripts (x86 + ARM)"* |
+| **WP3 — Harness gọi keygen/encaps/decaps/sign/verify** | §8.3 bước 2 *"Build microbenchmark harness that calls keygen/encaps/decaps/sign/verify in tight loops"* |
+| **WP3 — Timer `clock_gettime(CLOCK_MONOTONIC_RAW)`** | §8.3 *"with high-resolution timers (clock_gettime CLOCK_MONOTONIC_RAW)"* |
+| **WP3 — N = 1000–10000 iterations + CSV** | §7.4 *"run N iterations (e.g., 1000–10000)"* + §8.3 *"collect raw timings into CSV"* |
+| **WP3 — Tuần 5–6** | §10 *"Implement microbenchmark harnesses and initial runs"* |
+| **WP4 — Warm-up loại khỏi số đo** | §7.4 *"warm-up runs before measurement"* + §7.5 *"Warm-up iterations excluded from measurements"* |
+| **WP4 — K batches × M iterations** | §7.5 *"run at least K batches (e.g., 5–10) each with M iterations"* |
+| **WP4 — Median of medians + 95% CI + bootstrap/t** | §7.5 *"report median of medians and compute confidence intervals via bootstrap or t-distribution"* |
+| **WP4 — Paired comparison** | §7.5 *"Use paired comparisons when comparing algorithms on same hardware"* |
+| **WP5 — Reference vs optimized (NEON) build** | §7.2 *"test both reference (portable C) and optimized implementations (assembly, NEON-enabled builds)"* |
+| **WP5 — Ablation compiler flags** | §10 *"ablation studies (effects of compiler flags)"* |
+| **WP5 — Tuần 7–8** | §10 *"Implement optimized builds (assembly/NEON), repeat measurements"* |
+| **WP6 — TLS 1.3 classical vs PQC vs hybrid; `s_server`/`s_client`** | §7.6 *"OpenSSL-OQS TLS 1.3 handshake: measure handshake latency of classical vs PQC vs hybrid handshake (ECDHE + Kyber). Use s_server/s_client…"* |
+| **WP6 — Throughput đồng thời (`wrk`)** | §7.4 *"throughput under concurrent connections (e.g., wrk or custom harness)… single-threaded và multi-threaded"* |
+| **WP6 — Library-level / HTTPS server end-to-end** | §7.6 *"integrate Kyber/Dilithium into an application (e.g., small HTTPS server) and measure end-to-end metrics"* |
+| **WP6 — Tuần 9** | §10 *"TLS integration experiments (OpenSSL-OQS), hybrid handshake tests"* |
+| **WP7 — Code size: `size`, `readelf -S`; peak RSS: `/usr/bin/time -v`, `pmap`** | §7.4 nguyên văn |
+| **WP7 — Energy: Monsoon / INA219 / external rig** | §7.4 *"Energy/power: use Monsoon power monitor, INA219/INA226 for embedded, or external measurement rig — measure energy per operation and per handshake"* |
+| **WP7 — Tuần 10** | §10 *"Energy/power measurements, ablation studies, cross-platform comparison"* |
+| **WP8 — Charts (latency/throughput/bytes/energy) + bảng trade-off** | §9 *"charts for latency vs parameter set, throughput vs concurrency, bytes vs algorithm, energy vs algorithm, and a discussion table summarizing trade-offs"* |
+| **WP8 — Mid-term + Final report + Demo** | §11 nguyên văn 5 deliverables |
+| **WP8 — Tuần 11–12** | §10 *"Aggregate results, statistical analysis, prepare figures & tables… Final report, code cleanup, Docker images, presentation & demo"* |
+| **Cấu trúc repo** | §17 nguyên văn (`build/`, `benchmarks/{micro,tls,energy}/`, `scripts/`, `docker/`, `docs/`, `tools/`) |
+| **Risks (OS pinning, energy fallback, parameter fairness)** | §13 nguyên văn |
+| **Ethics (chỉ test môi trường kiểm thử, responsible disclosure)** | §14 nguyên văn |
+
+# Mục tôi **THÊM** (không có trong 05 nhưng cần để "đúng học thuật")
+
+3 chỉnh sửa này **không phải từ file 05** — tôi đề xuất thêm vì file 05 viết ở thời điểm trước chuẩn hoá hoặc dùng giả định kỹ thuật đã lỗi thời. Bạn cần ghi nhận rõ:
+
+| Mục thêm | Lý do (KHÔNG ở file 05) |
+|---|---|
+| **Đổi tên Kyber→ML-KEM (FIPS 203), Dilithium→ML-DSA (FIPS 204)** | File 05 (§5–7) dùng tên cũ "Kyber/Dilithium". Sau 13/08/2024 NIST chuẩn hoá tên mới, bản FIPS-final khác *nhẹ* round-3. Nếu giữ tên cũ → mất điểm academic correctness. |
+| **OpenSSL ≥ 3.5 native thay "OpenSSL-OQS fork"** | File 05 §7.2 và §16 đề xuất "OpenSSL OQS fork" — fork đã deprecated; OpenSSL 3.5 (4/2025) hỗ trợ ML-KEM/ML-DSA native + nhóm hybrid. |
+| **`rdtsc`/`cntvct_el0` ≠ core cycles** khi DVFS/turbo bật | File 05 §7.5 yêu cầu *"fix CPU frequency (disable turbo), isolate cores"* nhưng không nói rõ giới hạn của TSC/virtual timer. Cần dùng `perf stat` hoặc PMU thuần để có cycle thật. |
+
+---
+
+# Tóm tắt
+
+- **WP0–WP8 và mọi việc bên dưới đều có mục tham chiếu trực tiếp trong file 05** — không có việc nào "thừa".
+- **3 chỉnh sửa "đúng học thuật" là phần TÔI THÊM**, file 05 không nói — bạn quyết có áp hay không (khuyến nghị: áp, vì nó là rào chống mất điểm về độ chính xác chuẩn hoá).
+- Tất cả deliverables, timeline 12 tuần, comparison matrix, statistical methodology, repo structure đều **bám đúng nguyên văn** §1–§17 của file 05.

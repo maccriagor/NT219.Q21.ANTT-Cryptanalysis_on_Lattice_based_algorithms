@@ -12,6 +12,12 @@ case "$ARCH" in
   *)             TAG="pqc:wp1-$ARCH" ;;
 esac
 
+# Prefetch nguồn upstream nếu vendor/ chưa có (cần network HOST; build trong container không HTTPS được)
+if [ ! -d vendor/liboqs ] || [ ! -f vendor/openssl-3.6.2.tar.gz ]; then
+  echo ">>> vendor/ chưa có -> chạy scripts/fetch_sources.sh ..."
+  bash scripts/fetch_sources.sh
+fi
+
 echo ">>> Build $TAG (arch=$ARCH). Lần đầu build OpenSSL từ nguồn mất ~20-40 phút."
 docker build -t "$TAG" -f docker/Dockerfile.pqc .
 
