@@ -1,11 +1,9 @@
-# Môi trường build PQC: OpenSSL 3.6.2 (ML-KEM/ML-DSA native) + liboqs.
+# Môi trường build PQC: OpenSSL 3.6.2 (ML-KEM/ML-DSA native) + liboqs + PQClean (reference).
+# Nguồn vendor sẵn trong vendor/ (chạy scripts/fetch_sources.sh trên HOST trước) vì một số host
+# (vd Pi IPv6-only) chặn HTTPS trong container. Build KHÔNG cần HTTPS (chỉ apt qua port 80).
 # Một Dockerfile dùng chung arm64 và amd64 — build native trên từng máy.
-# OpenSSL >= 3.5 đã cung cấp ML-KEM/ML-DSA native nên không dùng oqs-provider.
-#   Build:  docker build -t pqc:wp1 -f docker/Dockerfile.pqc .
-#   Env:    docker run --rm -v "$PWD/data:/data" pqc:wp1 capture_env.sh
 FROM debian:bookworm-slim
 
-# Phiên bản pin cho build tái lập
 ARG OPENSSL_VER=3.6.2
 ARG LIBOQS_TAG=0.12.0
 ENV DEBIAN_FRONTEND=noninteractive
@@ -13,36 +11,38 @@ ENV PATH=/opt/openssl/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/openssl/lib
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential perl cmake ninja-build git pkg-config wget ca-certificates procps \
+      build-essential perl cmake ninja-build pkg-config procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/build
 
-# 1) OpenSSL 3.6.2 từ nguồn (native ML-KEM/ML-DSA), kiểm SHA256 trước khi giải nén
-RUN wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VER}/openssl-${OPENSSL_VER}.tar.gz" \
- && wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VER}/openssl-${OPENSSL_VER}.tar.gz.sha256" \
- && echo "$(cut -d' ' -f1 openssl-${OPENSSL_VER}.tar.gz.sha256)  openssl-${OPENSSL_VER}.tar.gz" | sha256sum -c - \
- && tar xf "openssl-${OPENSSL_VER}.tar.gz" \
- && cd "openssl-${OPENSSL_VER}" \
+# 1) OpenSSL 3.6.2 từ tarball vendored (kiểm SHA256)
+COPY vendor/openssl-${OPENSSL_VER}.tar.gz vendor/openssl-${OPENSSL_VER}.tar.gz.sha256 ./
+RUN echo "$(cut -d' ' -f1 openssl-${OPENSSL_VER}.tar.gz.sha256)  openssl-${OPENSSL_VER}.tar.gz" | sha256sum -c - \
+ && tar xf openssl-${OPENSSL_VER}.tar.gz \
+ && cd openssl-${OPENSSL_VER} \
  && ./config --prefix=/opt/openssl --openssldir=/opt/openssl/ssl --libdir=lib shared \
  && make -j"$(nproc)" \
  && make install_sw install_ssldirs \
  && echo /opt/openssl/lib > /etc/ld.so.conf.d/openssl.conf && ldconfig \
  && cd / && rm -rf /opt/build/openssl-${OPENSSL_VER}*
 
-# 2) liboqs (shared) dùng OpenSSL 3.6.2; OQS_DIST_BUILD=ON tự phát hiện NEON lúc chạy
-RUN git clone --depth 1 --branch ${LIBOQS_TAG} https://github.com/open-quantum-safe/liboqs.git \
- && cmake -GNinja -S liboqs -B liboqs/build \
+# 2) liboqs từ nguồn vendored (shared); OQS_DIST_BUILD=ON tự dò NEON
+COPY vendor/liboqs /opt/build/liboqs
+RUN cmake -GNinja -S /opt/build/liboqs -B /opt/build/liboqs/build \
       -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
       -DOQS_DIST_BUILD=ON -DOPENSSL_ROOT_DIR=/opt/openssl \
       -DCMAKE_INSTALL_PREFIX=/usr/local \
- && ninja -C liboqs/build && ninja -C liboqs/build install && ldconfig
+ && ninja -C /opt/build/liboqs/build && ninja -C /opt/build/liboqs/build install && ldconfig
 
-# 3) Script ghi cấu hình máy + ghi lại phiên bản đã pin
+# 2b) PQClean (reference, vendored)
+COPY vendor/pqclean /opt/pqclean
+
+# 3) Script ghi cấu hình máy + ghi lại phiên bản
 COPY scripts/capture_env.sh /usr/local/bin/capture_env.sh
 RUN sed -i 's/\r$//' /usr/local/bin/capture_env.sh && chmod +x /usr/local/bin/capture_env.sh \
  && { echo "openssl: $(openssl version)"; echo "liboqs: ${LIBOQS_TAG}"; \
-      gcc --version | head -1; } > /opt/build/versions.txt
+      echo "pqclean: vendored (ml-kem, ml-dsa, common)"; gcc --version | head -1; } > /opt/build/versions.txt
 
 WORKDIR /data
 CMD ["bash"]
