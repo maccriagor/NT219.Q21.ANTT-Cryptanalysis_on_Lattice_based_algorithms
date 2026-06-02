@@ -43,6 +43,15 @@
 # Generated / large
 *.log
 
-# Nguồn vendored (tái tạo bằng scripts/fetch_sources.sh) + kết quả chạy
+# Nguồn vendored PQClean (tái tạo: scripts/build_pqc_lib.sh / git clone PQClean)
 vendor/
-data/
+# Build artifacts (lib tĩnh + object PQClean)
+build/
+# Binary benchmark đã biên dịch (không có đuôi -> liệt kê tường minh)
+benchmark_mlkem/benchmark_mlkem
+benchmark_mldsa/benchmark_mldsa
+benchmark_aes/benchmark_aes
+benchmark_p521/benchmark_p521
+rsa15360_full/rsa15360_full
+
+# LƯU Ý: data/ ĐƯỢC commit — kết quả benchmark + KAT + env + figures là SẢN PHẨM đồ án.

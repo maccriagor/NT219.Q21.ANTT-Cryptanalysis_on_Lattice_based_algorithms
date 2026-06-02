@@ -1,0 +1,4 @@
+================ PEAK RSS (Maximum resident set size) ================
+  benchmark_mlkem/benchmark_mlkem 1024 : 3656 KB peak RSS
+  benchmark_mldsa/benchmark_mldsa 87 : 3744 KB peak RSS
+  benchmark_aes/benchmark_aes 256 : 7564 KB peak RSS

@@ -1,0 +1,19 @@
+================ KAT / CORRECTNESS VALIDATION ================
+arch: x86_64   time: 2026-06-02T04:26:25Z
+Phương pháp: chạy mỗi scheme×mức 30 lần; mỗi lần qua cổng đúng đắn nội bộ (exit 0 = PASS).
+
+--- ML-KEM (FIPS 203): encaps==decaps shared secret ---
+  PASS  mlkem-512   (30/30 roundtrip OK)  FIPS sizes: pk=800 ct=768 ss=32
+  PASS  mlkem-768   (30/30 roundtrip OK)  FIPS sizes: pk=1184 ct=1088 ss=32
+  PASS  mlkem-1024   (30/30 roundtrip OK)  FIPS sizes: pk=1568 ct=1568 ss=32
+--- ML-DSA (FIPS 204): verify(real)=PASS, verify(tampered)=FAIL ---
+  PASS  mldsa-44   (30/30 roundtrip OK)  FIPS sizes: pk=1312 sig=2420
+  PASS  mldsa-65   (30/30 roundtrip OK)  FIPS sizes: pk=1952 sig=3309
+  PASS  mldsa-87   (30/30 roundtrip OK)  FIPS sizes: pk=2592 sig=4627
+--- AES-GCM: roundtrip OK, tampered tag rejected ---
+  PASS  aes-128   (30/30 roundtrip OK)  FIPS sizes: key=16 tag=16
+  PASS  aes-192   (30/30 roundtrip OK)  FIPS sizes: key=24 tag=16
+  PASS  aes-256   (30/30 roundtrip OK)  FIPS sizes: key=32 tag=16
+
+TỔNG: PASS=9  FAIL=0
+==> TẤT CẢ ĐÚNG ĐẮN: số đo trong data/micro/ đáng tin.

@@ -8,14 +8,17 @@ Tài liệu bàn giao để **tiếp tục dự án trên Ubuntu** (WSL2 hoặc 
 
 | WP | Trạng thái | Ghi chú |
 |---|---|---|
-| WP0 lý thuyết/lit review/threat | 🟡 tài liệu xong | `06_References...md`, `11_WP0_Study_Dossier.md` |
-| WP1 môi trường build | ✅ **ARM xong** · ❌ x86 Docker chưa | image `pqc:wp1-arm64` (OpenSSL 3.6.2 + liboqs + PQClean) trên Pi |
-| WP2 microbenchmark | 🟡 harness xong + test x86 (MinGW) · ARM đang chạy | `benchmarks/micro/pqc_bench.cpp` (OpenSSL EVP) |
-| WP3 NEON vs reference + cycle | ❌ chưa | dùng liboqs (reference vs NEON) + perf PMU |
-| WP4 TLS qua mạng + Apache | 🟡 script xong · handshake ARM đã thử | `scripts/run_apache_demo.sh`, `docker/Dockerfile.apache` |
-| WP5 kiến trúc onion | 🟡 thiết kế xong | `09_Architecture...md`, `docs/REPORT.md` |
-| WP6 RSS/size/energy/validation | ❌ mới có byte sizes | |
-| WP7 thống kê/biểu đồ/báo cáo | ❌ chưa | cần data đủ |
+| WP0 lý thuyết/lit review/threat | ✅ **xong** | `docs/THREAT_MODEL.md` (289d, crypto risk), `06`, `11` |
+| WP1 môi trường build | ✅ **xong** (x86 native + container) | `vendor/pqclean/` + `build/libpqc.a` (gcc); container `pqc:wp1-amd64` OpenSSL 3.6.1 native |
+| WP2 microbenchmark | ✅ **ĐO THẬT x86 đủ 3 mức NIST** | 3 file tách: `benchmark_{mlkem,mldsa,aes}/` → `data/micro/x86/*` (300 mẫu/file) + `micro_evp_x86.csv` (AVX2). KAT 9/9 PASS |
+| WP3 NEON vs reference | 🟡 **MÔ HÌNH** (chờ chạy Pi) | `data/micro/neon_vs_ref.csv` (liboqs factor) — chạy `build_run.sh` trên Pi để chốt số thật |
+| WP4 TLS PQC | ✅ handshake **THẬT** (localhost) · netem MÔ HÌNH | `scripts/run_tls_handshake.sh` → X25519MLKEM768 + cert ML-DSA-65; `data/tls/netem_matrix.csv` |
+| WP5 kiến trúc onion | ✅ thiết kế + docs | `docs/ARCH.md`, `CRYPTO_SOLUTION.md`, `09_...md` |
+| WP6 RSS/size/energy | ✅ size+RSS **THẬT** · energy MÔ HÌNH | `data/resource/{code_size,peak_rss}.txt`, `energy_estimate.csv` |
+| WP7 thống kê/biểu đồ/báo cáo | ✅ **xong** | `tools/plot.py` → 8 SVG; `docs/{RESULTS,EVAL,DATA_PROVENANCE,AIM,RUNBOOK}.md`; trả lời RQ1/2/3 |
+
+> **Số ARM/energy/netem là MÔ HÌNH** (Pi không truy cập trong phiên build) — chạy `scripts/run_all.sh`
+> TRÊN Pi để thay bằng số thật (runner tự ghi `data/micro/arm/`). Phân định: `docs/DATA_PROVENANCE.md`.
 
 ---
 

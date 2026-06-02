@@ -1,0 +1,12 @@
+# MODELED — Cortex-A72 reference-C = x86_reference_median_ns * factor.
+# factor = freq_ratio(2.93) * IPC_gap(~1.6) [lattice]; AES=22 (no ARMv8 crypto ext on BCM2711).
+Param,Category,op,arm_median_ns,factor,x86ref_median_ns
+1024,5,Decaps,430811,4.6,93654
+1024,5,Encaps,381708,4.6,82980
+1024,5,Keygen,379201,4.6,82435
+512,1,Decaps,193630,4.6,42094
+512,1,Encaps,164965,4.6,35862
+512,1,Keygen,157518,4.6,34243
+768,3,Decaps,331172,4.6,71994
+768,3,Encaps,284411,4.6,61828
+768,3,Keygen,268100,4.6,58282

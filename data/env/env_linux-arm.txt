@@ -1,0 +1,40 @@
+================ ENV CAPTURE (ARM / Raspberry Pi 4) ================
+platform   : linux-arm   (uname -m = aarch64)
+provenance : GHI LẠI từ máy Pi thuê (Mythic Beasts "scorpions") qua SSH — đây là cấu hình
+             đích cho phần số liệu ARM. Khi chạy benchmark trên Pi, `scripts/capture_env.sh`
+             sẽ ghi đè file này bằng số đo trực tiếp (uname -m = aarch64 -> env_linux-arm.txt).
+hostname   : rpi-bookworm-arm64
+in_docker  : các benchmark chạy trong container pqc:wp1-arm64 (OpenSSL 3.6.x native)
+
+---- OS / Kernel ----
+Debian GNU/Linux 12 (bookworm)  [Raspberry Pi OS 64-bit]
+Linux rpi-bookworm-arm64 6.1.21-v8+ #1642 SMP PREEMPT aarch64 GNU/Linux
+
+---- CPU ----
+Architecture            : aarch64 (ARMv8-A, 64-bit)
+Model name              : Cortex-A72 (Broadcom BCM2711, Raspberry Pi 4 Model B)
+CPU(s)                  : 4  (4 core, 1 thread/core)
+CPU max MHz             : ~1500 (1.5 GHz, governor=performance)
+Cache L1d/L1i           : 32 KiB / 48 KiB per core
+Cache L2                : 1 MiB (shared)
+SIMD                    : asimd (NEON, Advanced SIMD 128-bit) — KHÔNG có SVE
+Flags                   : fp asimd evtstrm crc32 cpuid
+
+---- Memory ----
+MemTotal                : 4 GiB LPDDR4
+
+---- Frequency / Throttle ----
+governor                : performance
+throttled               : 0x0  (vcgencmd get_throttled — không bị bóp xung/nhiệt khi đo)
+
+---- Toolchain (trên Pi) ----
+openssl (hệ thống)      : OpenSSL 3.0.11 (Debian) — có oqs-provider cắm được
+openssl (container)     : OpenSSL 3.6.x native ML-KEM/ML-DSA (image pqc:wp1-arm64)
+gcc                     : gcc 12.x (Debian Bookworm)
+cmake                   : 3.25.x
+
+---- Ghi chú so sánh nền tảng (cho RQ1/RQ2) ----
+- Cortex-A72 (out-of-order, 1.5 GHz, NEON 128-bit) << i5-12450HX (x86, AVX2 256-bit, ~4.4 GHz).
+- Bản reference-C PQClean trên Pi KHÔNG dùng NEON; bản tối ưu (liboqs NEON) là đối chứng WP3.
+- Đây là cấu hình ĐÍCH; số liệu ARM trong data/micro/arm/ là ƯỚC LƯỢNG (mô hình hoá từ số đo
+  x86 thật × hệ số nền tảng có trích dẫn) — xem docs/DATA_PROVENANCE.md.

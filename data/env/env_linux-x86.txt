@@ -1,0 +1,31 @@
+================ ENV CAPTURE ================
+platform   : linux-x86   (uname -m = x86_64)
+timestamp  : 2026-06-02T04:11:21Z
+hostname   : LOQ
+in_docker  : no
+
+---- OS / Kernel ----
+Ubuntu 24.04.4 LTS
+Linux 6.17.0-20-generic #20~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Mar 19 01:28:37 UTC 2 x86_64 GNU/Linux
+
+---- CPU ----
+Architecture:                            x86_64
+CPU(s):                                  12
+Model name:                              12th Gen Intel(R) Core(TM) i5-12450HX
+CPU(s) scaling MHz:                      49%
+CPU max MHz:                             4400.0000
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities
+SIMD       : avx2 
+
+---- Memory ----
+               total        used        free      shared  buff/cache   available
+Mem:            23Gi       6.6Gi       9.6Gi       1.1Gi       7.7Gi        16Gi
+
+---- Frequency / Throttle ----
+governor   : powersave
+throttled  : n/a (chỉ có trên Pi host, không có trong container)
+
+---- Toolchain ----
+openssl    : OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)
+gcc        : gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+cmake      : n/a

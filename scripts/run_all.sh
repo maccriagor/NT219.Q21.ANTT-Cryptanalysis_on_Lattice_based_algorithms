@@ -1,37 +1,50 @@
 #!/usr/bin/env bash
-# run_all.sh — Chạy toàn bộ pipeline. Bạn CHỈ CẦN chạy script này.
-#   1) Build image PQC (OpenSSL 3.6.2 + liboqs + PQClean)   [tự prefetch vendor/ nếu thiếu]
-#   2) Ghi cấu hình máy -> data/env/
-#   3) Verify đúng đắn (PQC native + liboqs + PQClean)
-#   4) Microbenchmark -> data/results/micro_<plat>.csv
-#   5) Demo TLS 1.3 PQC + Apache -> data/results/
-# Biến: N (số vòng đo, mặc định 1000), WARM (warm-up, 100).
+# run_all.sh — Chạy TOÀN BỘ pipeline đồ án bằng 1 lệnh (đo thật x86 + sinh số mô hình + figures).
+# Trên Raspberry Pi (aarch64): các benchmark tự ghi vào data/micro/arm/ (runner tự nhận arch).
+#
+#   1) build libpqc.a (PQClean reference, đủ 6 param-set)
+#   2) 3 benchmark PQC đa mức NIST  -> data/micro/<arch>/{mlkem,mldsa,aes}_<arch>.csv  (100/mức)
+#   3) KAT / correctness            -> data/kat/kat_results.txt
+#   4) (x86) bản tối ưu AVX2        -> data/micro/x86/micro_evp_x86.csv          [cần podman]
+#   5) (x86) TLS 1.3 PQC handshake  -> data/tls/x86/handshake_x86.txt            [cần podman]
+#   6) capture_env                  -> data/env/env_linux-<arch>.txt
+#   7) tổng hợp + sinh số mô hình   -> summary + arm/ + neon + energy + netem
+#   8) figures SVG                  -> docs/report/figures/*.svg
 set -euo pipefail
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-ARCH="$(uname -m)"; case "$ARCH" in aarch64|arm64) TAG=pqc:wp1-arm64 ;; *) TAG=pqc:wp1-amd64 ;; esac
+ARCH="$(uname -m)"; HAVE_PODMAN=0; command -v podman >/dev/null 2>&1 && HAVE_PODMAN=1
+command -v docker >/dev/null 2>&1 && HAVE_PODMAN=1
 
-echo "############ [1/5] Build image PQC ############"
-bash scripts/docker_build.sh
+echo "############ [1/8] build libpqc.a ############"
+bash scripts/build_pqc_lib.sh
 
-echo "############ [2/5] Ghi cấu hình máy ############"
-mkdir -p data
-docker run --rm -v "$PWD/data:/data" "$TAG" capture_env.sh
+echo "############ [2/8] microbenchmark PQC đa mức NIST ############"
+( cd benchmark_mlkem && bash build_run.sh )
+( cd benchmark_mldsa && bash build_run.sh )
+( cd benchmark_aes   && bash build_run.sh )
 
-echo "############ [3/5] Verify PQC (native + liboqs + PQClean) ############"
-docker run --rm "$TAG" sh -c '
-  echo "- openssl: $(openssl version)";
-  echo "- ML-KEM native:"; openssl list -kem-algorithms | grep -i ML-KEM | sed "s/^/    /";
-  echo "- ML-DSA native:"; openssl list -signature-algorithms | grep -i ML-DSA | sed "s/^/    /";
-  echo "- liboqs speed_kem ML-KEM-768 (smoke):"; /opt/build/liboqs/build/tests/speed_kem ML-KEM-768 2>/dev/null | head -4 | sed "s/^/    /";
-  echo "- PQClean dirs:"; ls /opt/pqclean/crypto_kem | sed "s/^/    /"
-'
+echo "############ [3/8] KAT / correctness ############"
+bash scripts/run_kat.sh || echo "⚠️ KAT có lỗi — xem data/kat/kat_results.txt"
 
-echo "############ [4/5] Microbenchmark ############"
-bash scripts/run_micro.sh "${N:-1000}" "${WARM:-100}"
+if [ "$ARCH" = "x86_64" ] && [ "$HAVE_PODMAN" = 1 ]; then
+  echo "############ [4/8] bản tối ưu AVX2 (OpenSSL EVP, container) ############"
+  bash scripts/run_micro_evp.sh || echo "⚠️ EVP harness lỗi (bỏ qua)"
+  echo "############ [5/8] TLS 1.3 PQC handshake (container) ############"
+  bash scripts/run_tls_handshake.sh || echo "⚠️ TLS handshake lỗi (bỏ qua)"
+else
+  echo "############ [4-5/8] BỎ QUA bản tối ưu + TLS (cần x86 + podman) ############"
+fi
 
-echo "############ [5/5] Demo TLS 1.3 PQC + Apache ############"
-bash scripts/run_apache_demo.sh
+echo "############ [6/8] capture_env ############"
+bash scripts/capture_env.sh data/env || true
+
+echo "############ [7/8] tổng hợp + sinh số mô hình ############"
+python3 scripts/build_dataset.py
+
+echo "############ [8/8] figures SVG ############"
+python3 tools/plot.py
 
 echo
-echo "############ HOÀN TẤT — kết quả trong data/ ############"
-find data -type f | sed 's/^/  /'
+echo "############ HOÀN TẤT — kết quả trong data/ + docs/report/figures/ ############"
+echo "Đo thật vs mô hình: docs/DATA_PROVENANCE.md · Kết quả + RQ: docs/RESULTS.md"
+find data -name '*.csv' -o -name '*.txt' | grep -v .gitkeep | sed 's/^/  /' | sort
