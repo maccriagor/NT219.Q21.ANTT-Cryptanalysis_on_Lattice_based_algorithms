@@ -1,57 +1,19 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# debug information files
-*.dwo
-
-# Generated / large
-*.log
-
-# Nguồn vendored PQClean (tái tạo: scripts/build_pqc_lib.sh / git clone PQClean)
-vendor/
-# Build artifacts (lib tĩnh + object PQClean)
+# Output biên dịch (Makefile tự sinh) — KHÔNG commit
 build/
-# Binary benchmark đã biên dịch (không có đuôi -> liệt kê tường minh)
-benchmark_mlkem/benchmark_mlkem
-benchmark_mldsa/benchmark_mldsa
-benchmark_aes/benchmark_aes
-benchmark_p521/benchmark_p521
-rsa15360_full/rsa15360_full
-
-# LƯU Ý: data/ ĐƯỢC commit — kết quả benchmark + KAT + env + figures là SẢN PHẨM đồ án.
+build-*/
+*.o
+*.d
+# Source bên thứ ba clone tạm khi build
+.build/
+.openssl/
+# Kết quả phân tích tạm
+analysis_out/
+__pycache__/
+# Khóa/chứng chỉ — KHÔNG commit
+*.key
+*.pem
+*.crt
+*.csr
+# Công cụ/đồ nghề cục bộ
+.claude/
+memory/
