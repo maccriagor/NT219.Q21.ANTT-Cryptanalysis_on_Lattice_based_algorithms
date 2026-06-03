@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Sinh chứng chỉ TLS tự ký, KÝ BẰNG ML-DSA-65 (OpenSSL 3.6.2 native).
-# Tài liệu: https://docs.openssl.org/3.5/man1/openssl-req/ , EVP_PKEY-ML-DSA
 set -euo pipefail
 OUT="${1:-/opt/httpd/conf}"
 openssl req -x509 -new -newkey mldsa65 -nodes \

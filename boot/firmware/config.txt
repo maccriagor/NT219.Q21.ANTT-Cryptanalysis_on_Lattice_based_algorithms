@@ -1,0 +1,4 @@
+# /boot/firmware/config.txt  -- ghim tần số để benchmark ổn định
+arm_freq=1500          # tần số chuẩn Pi 4 (1.5GHz). KHÔNG cần overclock cho tính tái lập
+force_turbo=1          # ép giữ tần số cố định, bỏ qua governor động
+# over_voltage=...     # CHỈ khi overclock; over_voltage>6 + force_turbo=1 sẽ set warranty bit

@@ -37,18 +37,6 @@ Mục tiêu: triển khai, tối ưu và đo đạc hiệu năng các scheme h�
 **RQ2:** Liệu tối ưu chuyên biệt cho ARM (NEON, compile flags) có thể làm cho PQC khả thi trên các thiết bị SBC (ví dụ Raspberry Pi 4) cho ứng dụng TLS?
 
 **RQ3:** Kết hợp hybrid handshake (ECDHE + Kyber) có overhead chấp nhận được cho các server web/clients hay không?
-PS C:\Users\LENOVO\OneDrive\Desktop> ssh -p 5203 root@ssh.scorpions.hostedpi.com
-Linux rpi-bookworm-arm64 6.1.21-v8+ #1642 SMP PREEMPT Mon Apr  3 17:24:16 BST 2023 aarch64
-
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-Last login: Mon Jun  1 19:26:52 2026 from 115.73.138.150
-root@rpi-bookworm-arm64:~#
-
 
 **Giả thuyết:** Kyber/Dilithium sẽ có overhead băng thông (ký tự, public key, ciphertext) và độ trễ cao hơn RSA/ECDSA, nhưng với tối ưu phần mềm và phần cứng (NEON), hiệu năng có thể trở nên đủ tốt cho hầu hết use-cases server và SBC.
 
@@ -102,6 +90,7 @@ root@rpi-bookworm-arm64:~#
 * **Energy/power:** use Monsoon power monitor, INA219/INA226 for embedded, or external measurement rig — measure energy per operation and per handshake.
 * **Repeatability:** fix CPU frequency (disable turbo), isolate cores, run multiple batches, warm-up runs before measurement.
 
+
 ### 7.5. Statistical methodology
 
 * Warm-up iterations excluded from measurements.
@@ -110,7 +99,8 @@ root@rpi-bookworm-arm64:~#
 
 ### 7.6. Integration experiments
 
-* **OpenSSL-OQS TLS 1.3 handshake:** measure handshake latency of classical vs PQC vs hybrid handshake (ECDHE + Kyber). Use `s_server`/`s_client` or scripted browsers/clients and measure RTTs.
+* 
+
 * **Library-level workloads:** integrate Kyber/Dilithium into an application (e.g., small HTTPS server) and measure end-to-end metrics.
 
 ---
