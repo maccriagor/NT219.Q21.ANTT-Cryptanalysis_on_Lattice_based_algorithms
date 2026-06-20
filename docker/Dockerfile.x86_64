@@ -1,53 +1,35 @@
-# syntax=docker/dockerfile:1
-# ---- Pin base image theo DIGEST (thay bằng digest thực tế: docker buildx imagetools inspect debian:bookworm-slim) ----
-ARG BASE_DIGEST=sha256:<DÁN_DIGEST_THỰC_TẾ>
-FROM debian:bookworm-slim@${BASE_DIGEST} AS build
-
-ARG OPENSSL_TAG=openssl-3.6.2
-ARG LIBOQS_TAG=0.14.0
-ARG OQSPROVIDER_TAG=0.10.0
-ARG PREFIX=/opt/oqs
+# =============================================================================
+# Dockerfile.x86_64 - Reproducible x86_64 build environment (brief section 7.3).
+# Build:   docker build -f docker/Dockerfile.x86_64 -t nt219-pqc .
+# Run:     docker run -it --rm nt219-pqc
+# Inside, the custom OpenSSL (with ML-KEM/ML-DSA) and bench_evp are prebuilt.
+# =============================================================================
+# DESIGN NOTES
+#   - Brief 7.3 verbatim deliverable: "Provide Dockerfile for x86_64".
+#   - Reuses the repo's own scripts (build_openssl.sh, make, verify_env.sh)
+#     instead of duplicating commands -> single source of truth; if a script
+#     changes, the image follows automatically.
+#   - SKIP_TESTS=1 follows the oqs-demos CI convention (full OpenSSL test
+#     suite is a one-time on-metal task, not a per-image one).
+#   - verify_env.sh at the end makes the IMAGE self-failing when broken.
+#   - Build from the REPO ROOT (COPY needs the context): 
+#       docker build -f docker/Dockerfile.x86_64 -t nt219-pqc .
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential cmake ninja-build git wget ca-certificates perl \
-    && rm -rf /var/lib/apt/lists/*
+      build-essential git perl pkg-config cmake ninja-build \
+      python3 ca-certificates time \
+ && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src
-RUN git clone --depth 1 --branch ${LIBOQS_TAG}      https://github.com/open-quantum-safe/liboqs.git && \
-    git clone --depth 1 --branch ${OPENSSL_TAG}     https://github.com/openssl/openssl.git && \
-    git clone --depth 1 --branch ${OQSPROVIDER_TAG} https://github.com/open-quantum-safe/oqs-provider.git
+WORKDIR /repo
+COPY . /repo
 
-# Tầng 1: OpenSSL 3.6.2 (prefix riêng)
-WORKDIR /src/openssl
-RUN ./Configure --prefix=${PREFIX}/openssl --openssldir=${PREFIX}/openssl/ssl --libdir=lib shared \
-      -Wl,-rpath,${PREFIX}/openssl/lib -Wl,--enable-new-dtags && \
-    make -j"$(nproc)" && make install_sw
+# Full OpenSSL test suite is very long in CI: skip inside the image build.
+RUN SKIP_TESTS=1 bash scripts/build_openssl.sh
 
-# Tầng 2: liboqs (x86_64: bật AVX2 qua DIST_BUILD=ON cho portable image, hoặc OFF cho native)
-WORKDIR /src/liboqs
-RUN cmake -GNinja -S . -B build \
-      -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DOQS_ALGS_ENABLED=STD \
-      -DOQS_DIST_BUILD=ON -DOPENSSL_ROOT_DIR=${PREFIX}/openssl \
-      -DCMAKE_INSTALL_PREFIX=${PREFIX}/liboqs && \
-    cmake --build build -j"$(nproc)" && cmake --install build
+ENV PATH="/root/pqc/openssl/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/root/pqc/openssl/lib:/root/pqc/openssl/lib64"
 
-# Tầng 3: oqs-provider
-WORKDIR /src/oqs-provider
-RUN liboqs_DIR=${PREFIX}/liboqs cmake \
-      -DOPENSSL_ROOT_DIR=${PREFIX}/openssl -DCMAKE_PREFIX_PATH=${PREFIX}/openssl \
-      -DCMAKE_BUILD_TYPE=Release -S . -B _build && \
-    cmake --build _build -j"$(nproc)" && \
-    cp _build/lib/oqsprovider.so ${PREFIX}/openssl/lib/ossl-modules/ && \
-    sed -i "s/default = default_sect/default = default_sect\noqsprovider = oqsprovider_sect/g" ${PREFIX}/openssl/ssl/openssl.cnf && \
-    sed -i "s/\[default_sect\]/\[default_sect\]\nactivate = 1\n\[oqsprovider_sect\]\nactivate = 1\n/g" ${PREFIX}/openssl/ssl/openssl.cnf
-
-# ---- Runtime stage gọn ----
-FROM debian:bookworm-slim@${BASE_DIGEST} AS runtime
-ARG PREFIX=/opt/oqs
-COPY --from=build ${PREFIX} ${PREFIX}
-ENV PATH=${PREFIX}/openssl/bin:$PATH \
-    OPENSSL_CONF=${PREFIX}/openssl/ssl/openssl.cnf \
-    OPENSSL_MODULES=${PREFIX}/openssl/lib/ossl-modules \
-    LD_LIBRARY_PATH=${PREFIX}/openssl/lib
-RUN openssl list -providers -provider oqsprovider
+# Build the benchmark harness and gate on a healthy environment.
+RUN make && bash scripts/verify_env.sh
+CMD ["/bin/bash"]

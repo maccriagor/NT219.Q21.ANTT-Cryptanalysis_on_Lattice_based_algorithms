@@ -1,0 +1,121 @@
+\documentclass[11pt,a4paper]{article}
+% ====== Final report skeleton (Deliverable 2) — compile with XeLaTeX ======
+\usepackage{amssymb}
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}[Scale=0.92]
+\setmonofont{DejaVu Sans Mono}[Scale=0.85]
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\setlength{\emergencystretch}{3em}
+
+% Safe monospace for paths with underscores
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+% Figure that hides itself until `make analyze` has produced the PNG
+\newcommand{\maybefig}[2]{\IfFileExists{#1}{%
+  \begin{figure}[h]\centering\includegraphics[width=.82\linewidth]{#1}%
+  \caption{#2}\end{figure}}{\par\noindent\textit{[Hình: #2 --- sinh bằng \code{make analyze}, file \code{#1}]}\par}}
+
+\title{\textbf{Benchmark các lược đồ hậu lượng tử trên lưới:\\ML-KEM và ML-DSA so với RSA/ECC\\trên x86\_64 và ARM}}
+\author{Nhóm --- NT219}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+[TODO 150--250 từ: bối cảnh PQC, hai nền tảng (server x86\_64; SBC ARM Cortex-A72), phương pháp (microbenchmark EVP, paired ref/opt liboqs, TLS 1.3 handshake), 2--3 con số chốt, khuyến nghị chính.]
+\end{abstract}
+
+\tableofcontents
+
+\section{Giới thiệu, câu hỏi nghiên cứu và giả thuyết}
+[TODO mở bài.] Ba câu hỏi theo đề: \textbf{RQ1} chi phí PQC so với RSA/ECDSA trên server x86\_64; \textbf{RQ2} tối ưu ARM (NEON, cờ biên dịch) có đưa PQC về mức khả thi trên SBC (Raspberry Pi 4) cho TLS; \textbf{RQ3} handshake hybrid (ECDHE + ML-KEM) có overhead chấp nhận được. Giả thuyết: PQC tốn băng thông/khóa lớn hơn nhưng tối ưu phần mềm đưa hiệu năng về mức đủ dùng.
+
+\section{Background}
+[TODO: lattice ngắn gọn; ML-KEM (FIPS 203) thay tên Kyber, ML-DSA (FIPS 204) thay tên Dilithium; ánh xạ mức an toàn.]
+
+\begin{table}[h]\centering
+\caption{Ánh xạ mức an toàn dùng khi so sánh (FIPS 203/204; NIST SP 800-57). RSA-2048 ($\approx$112-bit) giữ làm baseline thực dụng, dưới mức 1.}
+\begin{tabular}{llll}\toprule
+Mức & PQC & RSA tương đương & EC tương đương\\\midrule
+1 ($\approx$AES-128) & ML-KEM-512, ML-DSA-44 & RSA-3072 & P-256\\
+3 ($\approx$AES-192) & ML-KEM-768, ML-DSA-65 & RSA-7680 & P-384\\
+5 ($\approx$AES-256) & ML-KEM-1024, ML-DSA-87 & RSA-15360 & P-521\\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Literature review}
+[TODO tổng quan $\geq$6 nguồn theo đề: chuẩn \cite{fips203,fips204,sp80057}, bộ công cụ \cite{liboqs,pqclean,oqsprovider,pqm4}, tích hợp TLS \cite{openssl35}.] Ghi chú khảo sát: fork OQS-OpenSSL 1.1.1 đã ngừng, kế nhiệm chính thức là oqs-provider; PQClean được lên lịch archive read-only (07/2026), kế nhiệm PQ Code Package --- hai sự kiện này định hình lựa chọn công cụ ở \S\ref{sec:setup}.
+
+\section{Methodology}\label{sec:method}
+\textbf{Ma trận thuật toán} (\S7.1 đề): ML-KEM-512/768/1024, ML-DSA-44/65/87 đối chiếu RSA-2048/3072 (+15360 khi xét mức 5), ECDSA/ECDH P-256/384/521.
+\textbf{Microbenchmark} (\S7.4--7.5): \code{bench_evp} (EVP API, một binary, thuật toán chọn bằng đối số như \code{openssl speed}); warm-up loại trừ; K=5 batch $\times$ M vòng, median-of-medians, p95, CI.
+\textbf{Thí nghiệm tối ưu (RQ2):} hai cây liboqs cùng phiên bản trên cùng máy --- \code{ref} (C thuần, NEON/AVX2 tắt tường minh) và \code{opt} (\code{-march=native}/\code{-mcpu=native}, tự dò SIMD); so sánh ghép cặp, bắc cầu giữa máy bằng tỉ lệ opt/ref.
+\textbf{Macrobenchmark TLS (RQ3):} TLS 1.3 loopback, ma trận chứng thư (RSA-2048, ECDSA P-256, ML-DSA-65) $\times$ group (X25519, X25519MLKEM768, MLKEM768); latency tuần tự + throughput đồng thời; \code{wrk} không dùng được vì link OpenSSL hệ thống (thiếu ML-KEM) --- thay bằng bão \code{s_client} song song.
+
+\section{Implementation \& setup}\label{sec:setup}
+[TODO tóm tắt: OpenSSL 3.6.2 PQC-native tự build vào \code{~/pqc}; liboqs 0.14.0; oqs-provider 0.10.0; PQClean (commit ghim).] Hai nền tảng: laptop x86\_64 (Ubuntu 24.04) và Raspberry Pi 4 (Cortex-A72, BCM2711 --- \emph{không có} ARM Crypto Extensions, hosted Mythic Beasts, IPv6-only). Bằng chứng tái lập: \code{docs/openssl.commit}, \code{liboqs.commit}, \code{pqclean.commit}, \code{oqsprovider.commit}; biên bản môi trường \code{docs/env_report_x86_64.txt} và \code{docs/env_report_aarch64.txt} (compiler, cờ, governor). Governor cố định \code{performance} khi đo; Pi 4 nghỉ nguội giữa các batch (throttle $\sim$80\,°C).
+
+\section{Kết quả}
+\subsection{Microbenchmark (WP2)}
+[TODO đọc số từ \code{analysis_out/tables.md}.]
+\maybefig{../../analysis_out/micro_sign_median_us_x86_64.png}{Median sign theo thuật toán, x86\_64}
+\maybefig{../../analysis_out/micro_sign_median_us_aarch64.png}{Median sign theo thuật toán, ARM}
+
+\subsection{Hiệu ứng tối ưu vi kiến trúc (WP3)}
+Kết quả mẫu đã đo trên x86\_64 (ML-KEM-768, liboqs 0.14.0, cùng máy):
+\begin{table}[h]\centering
+\caption{ref vs opt trên x86\_64 --- ``hiệu ứng tối ưu x86 trọn gói'' (AVX2 chủ đạo + AES-NI). Kiểm chéo bằng chu kỳ CPU cho cùng tỉ lệ.}
+\begin{tabular}{lrrr}\toprule
+Op & ref ($\mu$s) & opt ($\mu$s) & Speedup\\\midrule
+keygen & 30.985 & 10.705 & $\times$2.89\\
+encaps & 30.963 & 11.255 & $\times$2.75\\
+decaps & 36.250 & 13.718 & $\times$2.64\\\bottomrule
+\end{tabular}
+\end{table}
+[TODO bảng tương ứng trên ARM (NEON) --- chính là trả lời RQ2; so \emph{tỉ lệ} hai máy.]
+\maybefig{../../analysis_out/liboqs_speedup_x86_64.png}{Speedup ref$\to$opt, x86\_64}
+\maybefig{../../analysis_out/liboqs_speedup_aarch64.png}{Speedup ref$\to$opt (NEON), ARM}
+
+\subsection{Bộ nhớ và kích thước (WP5)}
+[TODO: peak RSS; code size \code{libcrypto}/\code{liboqs}; PQClean per-algorithm; kích thước khóa/chữ ký đối chiếu hằng số FIPS.]
+\maybefig{../../analysis_out/memory_x86_64.png}{Peak RSS theo thuật toán, x86\_64}
+\maybefig{../../analysis_out/codesize_x86_64.png}{Code size, x86\_64}
+
+\subsection{TLS 1.3 handshake (WP4)}
+[TODO: bảng cert $\times$ group; chú ý ô \code{mldsa65 x X25519} cô lập chi phí chữ ký PQC; cột \code{cert_bytes} cho network overhead.]
+\maybefig{../../analysis_out/tls_latency_x86_64.png}{Median handshake theo group và chứng thư, x86\_64}
+\maybefig{../../analysis_out/tls_throughput_x86_64.png}{Throughput handshake đồng thời, x86\_64}
+
+\section{Phân tích và khuyến nghị}
+[TODO trade-off theo \S9 đề: latency vs mức an toàn; tốc độ đổi kích thước mã (clean vs avx2/aarch64); khuyến nghị cho practitioner: hybrid X25519MLKEM768 làm mặc định, ML-DSA-65 cho chứng thư khi hệ sinh thái sẵn sàng, lưu ý ClientHello lớn.]
+
+\section{Hạn chế (Limitations)}
+Năng lượng/điện năng (\S7.4, \S9): cần thiết bị đo chuyên dụng (Monsoon, INA219/226) --- ngoài phạm vi. MCU/pqm4 (\S7.2): điều kiện ``if testing MCU targets'' không kích hoạt; phạm vi là server + SBC, số liệu Cortex-M4 trích dẫn từ pqm4 \cite{pqm4}. PMU trên cloud VM không expose --- ARM đo wall-clock. Không đo trong QEMU/buildx (số của trình giả lập).
+
+\section{Ethics \& responsible disclosure}
+Toàn bộ đo trên loopback với khóa/chứng thư tự sinh dùng một lần; không khóa thật, không hệ thống bên ngoài; mã và dữ liệu công khai để tái lập.
+
+\section{Kết luận}
+[TODO trả lời thẳng RQ1--RQ3 bằng số.]
+
+\appendix
+\section{Cấu trúc repository \& bằng chứng}
+[TODO dán cây thư mục (\S17 đề) + danh sách file bằng chứng trong \code{docs/} và \code{data/}.]
+
+\begin{thebibliography}{9}
+\bibitem{fips203} NIST, \emph{FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard}, 2024. \url{https://csrc.nist.gov/pubs/fips/203/final}
+\bibitem{fips204} NIST, \emph{FIPS 204: Module-Lattice-Based Digital Signature Standard}, 2024. \url{https://csrc.nist.gov/pubs/fips/204/final}
+\bibitem{sp80057} NIST, \emph{SP 800-57 Part 1 Rev.~5: Recommendation for Key Management}. \url{https://csrc.nist.gov/pubs/sp/800/57/pt1/r5/final}
+\bibitem{liboqs} Open Quantum Safe, \emph{liboqs} 0.14.0. \url{https://github.com/open-quantum-safe/liboqs}
+\bibitem{pqclean} \emph{PQClean} (deprecation notice: archive 07/2026; kế nhiệm PQ Code Package). \url{https://github.com/PQClean/PQClean}
+\bibitem{oqsprovider} Open Quantum Safe, \emph{oqs-provider} 0.10.0 (kế nhiệm fork OQS-OpenSSL). \url{https://github.com/open-quantum-safe/oqs-provider}
+\bibitem{pqm4} mupq, \emph{pqm4: benchmarking PQC on ARM Cortex-M4}. \url{https://github.com/mupq/pqm4}
+\bibitem{pqtlsbench} C.~Paquin, D.~Stebila, G.~Tamvada, \emph{Benchmarking post-quantum cryptography in TLS}, IACR ePrint 2019/1447 (PQCrypto 2020); code: \url{https://github.com/xvzcf/pq-tls-benchmark} (client \code{s_timer.c} tự viết bằng SSL\_* + CLOCK\_MONOTONIC\_RAW).
+\bibitem{openssl35} OpenSSL docs 3.5: \emph{EVP\_PKEY-ML-DSA}; \emph{SSL\_CTX\_set1\_groups\_list} (X25519MLKEM768, MLKEM768). \url{https://docs.openssl.org/3.5/}
+\end{thebibliography}
+
+\end{document}

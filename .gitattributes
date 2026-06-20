@@ -1,3 +1,0 @@
-# Ép script shell luôn dùng LF (tránh lỗi CRLF khi soạn trên Windows -> chạy trên Linux/Docker)
-*.sh text eol=lf
-Dockerfile* text eol=lf

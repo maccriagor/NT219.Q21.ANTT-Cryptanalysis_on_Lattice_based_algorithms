@@ -1,19 +1,106 @@
-# Output biên dịch (Makefile tự sinh) — KHÔNG commit
-build/
-build-*/
-*.o
+# Prerequisites
 *.d
-# Source bên thứ ba clone tạm khi build
-.build/
-.openssl/
-# Kết quả phân tích tạm
-analysis_out/
-__pycache__/
-# Khóa/chứng chỉ — KHÔNG commit
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# debug information files
+*.dwo
+
+# ===========================================================================
+# Project-specific (NT219 PQC benchmark)
+# ===========================================================================
+
+# Build output (Makefile BINDIR=build) + CMake out-of-source trees
+/build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+# liboqs ref/neon build trees from WP3 (build-ref/, build-neon/)
+/build-*/
+
+# Third-party sources if accidentally cloned INTO the repo (huge; keep out)
+/openssl/
+/liboqs/
+/oqs-provider/
+/third_party/
+
+# Generated analysis + transient run logs
+# /analysis_out/  # plots are a deliverable (brief 11) -> committed
+*.log
+core
+
+# Secrets -- NEVER commit private keys (WP4 creates srv.key, ca.key, ...)
 *.key
-*.pem
-*.crt
+*.key.pem
+*-prv.pem
+*-private*.pem
+*.srl
 *.csr
-# Công cụ/đồ nghề cục bộ
-.claude/
-memory/
+
+# Python (tools/analyze.py)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (only if you generate docs/reports with the docx tooling)
+node_modules/
+
+# Editor / IDE / OS noise
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# NOTE: data/ is intentionally NOT ignored (raw CSVs are a deliverable, brief 11).
+# If raw CSVs get too big, uncomment to keep only summaries:
+# /data/raw/

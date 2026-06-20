@@ -1,80 +1,138 @@
-#----------------------------------------------------------------------------
-# NT219 PQC benchmark — Makefile
-# Sắp xếp theo layout của pqcbench (lelegard), thích nghi cho repo này:
-#   SRCDIR=apps, EXEC=build/bench_evp, OpenSSL link động + rpath, chạy Linux/Pi.
-# Hai khác biệt CÓ CHỦ ĐÍCH so với pqcbench (ghi chú ngay tại chỗ):
-#   (1) Bản release áp dụng FULLSPEED (-O3 ...) thay vì -O2 mặc định -> khớp yêu cầu -O3.
-#   (2) Thêm -Wl,-rpath khi dùng OSSLROOT -> binary tự tìm libcrypto, khỏi cần LD_LIBRARY_PATH.
-#----------------------------------------------------------------------------
-default: exec
+# =============================================================================
+# bench_evp from src/*.cpp, statically linked against a custom OpenSSL (ML-KEM/ML-DSA).
+# OpenSSL path comes from scripts/versions.env; the scripts' openssl CLI needs setenv.sh.
+# Run it:
+#   make             build bench_evp
+#   make bench       run all algos -> data/summary_micro_<arch>.csv
+#   make memory      peak RSS per algo -> data/memory_<arch>.csv
+#   make codesize    crypto lib sizes -> data/codesize_<arch>.csv
+#   make tls         TLS 1.3 handshakes -> data/tls_handshake_<arch>.csv
+#   make bench_oqs   build liboqs-direct micro-bench -> build/bench_oqs_{ref,opt}
+#   make oqs         bench_oqs + run ref-vs-opt sweep -> data/bench_oqs_<arch>.csv
+#   make tlsnetem    TLS 1.3 over netem RTT/loss (needs root + sch_netem)
+#   make analyze     aggregate everything into analysis_out/
+#   make help        list these targets
+#   make DEBUG=1     debug build (-O0)
+#   make OSSLROOT=/path/to/openssl  pick a specific OpenSSL
+# =============================================================================
 
-# SYSTEM = linux hoặc mac ; ARCH = x64 hoặc arm64 (dò tự động theo máy)
-SYSTEM := $(subst Linux,linux,$(subst Darwin,mac,$(shell uname -s)))
-ARCH   := $(subst amd64,x64,$(subst x86_64,x64,$(subst aarch64,arm64,$(shell uname -m))))
-
-# Thư mục và file của dự án.
-SRCDIR   = src
-BINDIR   = build
-EXEC     = $(BINDIR)/bench_evp
-SOURCES := $(wildcard $(SRCDIR)/*.cpp)
+SRCDIR := src
+BINDIR := build
+EXEC := $(BINDIR)/bench_evp
+# bench_oqs.cpp links liboqs and has its OWN main() -> EXCLUDE here; build it with
+# the separate `bench_oqs` target below (else: 2 main() + missing <oqs/oqs.h>).
+SOURCES := $(filter-out $(SRCDIR)/bench_oqs.cpp,$(wildcard $(SRCDIR)/*.cpp))
 OBJECTS := $(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.o,$(SOURCES))
 
-# Công cụ và tùy chọn chung.
-SHELL      = /usr/bin/env bash --noprofile
-# Cảnh báo: -Wall -Wextra; giữ -Werror vì harness build sạch (cảnh báo nào cũng thành lỗi).
-CXXFLAGS  += -Werror -Wall -Wextra -Wno-unused-parameter
-# Cờ tối ưu "full speed" (như pqcbench). pqcbench định nghĩa nhưng không dùng; ở đây áp cho release.
-FULLSPEED  = -O3 -fno-strict-aliasing -funroll-loops -fomit-frame-pointer
-# Trên macOS: tự thêm đường dẫn include/lib của Homebrew nếu có.
-CPPFLAGS  += -std=c++17 $(if $(findstring mac,$(SYSTEM)),$(addprefix -I,$(wildcard /opt/homebrew/include /usr/local/include)))
-LDFLAGS   += $(if $(findstring mac,$(SYSTEM)),$(addprefix -L,$(wildcard /opt/homebrew/lib /usr/local/lib)))
-LDLIBS    += -lcrypto -lm
+CXX ?= g++
+WARNINGS := -Wall
+RELEASE := -O3 -g2 -DNDEBUG
+DEBUGOPT := -g2 -O0
 
-# Đặt DEBUG=1 để build chế độ debug. Release áp dụng FULLSPEED (khác pqcbench dùng -O2).
-CXXFLAGS += $(if $(DEBUG),-g -O0,$(FULLSPEED))
-LDFLAGS  += $(if $(DEBUG),-g)
+CXXFLAGS += $(WARNINGS) -pthread
+LDFLAGS += -pthread
+LDLIBS += -lm -ldl
 
-# Dùng OpenSSL tự build:
-#   git clone https://github.com/openssl/openssl.git
-#   ./Configure --prefix=/opt/openssl-3.6.2 --libdir=lib shared ; make ; make install
-#   make OSSLROOT=/opt/openssl-3.6.2
-# Nhờ rpath nên KHÔNG cần đặt LD_LIBRARY_PATH lúc chạy (khác pqcbench).
-OSSLLIB := $(if $(wildcard $(OSSLROOT)/lib64),lib64,lib)
-CXXFLAGS += $(if $(OSSLROOT),-I$(OSSLROOT)/include)
-LDFLAGS  += $(if $(OSSLROOT),-L$(OSSLROOT)/$(OSSLLIB) -Wl$(comma)-rpath$(comma)$(OSSLROOT)/$(OSSLLIB))
-comma := ,
+ifdef DEBUG
+  CXXFLAGS += $(DEBUGOPT)
+  LDFLAGS += -g
+else
+  CXXFLAGS += $(RELEASE)
+endif
 
-# Các thao tác build.
-exec: $(EXEC)
-	@true
+ROOT_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+OSSLROOT ?= $(shell bash -c '. "$(ROOT_DIR)scripts/versions.env" 2>/dev/null && echo "$$OSSL_PREFIX"')
+
+ifeq ($(strip $(OSSLROOT)),)
+  $(error Cannot determine OSSLROOT. Run make from the repo root, or pass OSSLROOT=/path/to/openssl)
+endif
+
+ifneq ($(wildcard $(OSSLROOT)/lib64),)
+  OSSLLIBDIR := $(OSSLROOT)/lib64
+else
+  OSSLLIBDIR := $(OSSLROOT)/lib
+endif
+
+CPPFLAGS += -I$(OSSLROOT)/include
+LDFLAGS += -L$(OSSLLIBDIR)
+
+OSSL_A := $(OSSLLIBDIR)/libcrypto.a
+OSSL_A_SSL := $(OSSLLIBDIR)/libssl.a $(OSSLLIBDIR)/libcrypto.a
+
+.PHONY: all clean distclean
+.DEFAULT_GOAL := all
+
+all: $(EXEC)
+
 $(EXEC): $(OBJECTS)
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $(LDFLAGS) $^ $(OSSL_A) $(LDLIBS) -o $@
+
 $(BINDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BINDIR)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
-run: $(EXEC)
-	$(EXEC) rsa 2048
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
 clean:
-	rm -rf build build-* core *.tmp *.log __pycache__
+	rm -rf $(BINDIR)
+
 distclean: clean
-	rm -rf .openssl analysis_out
+	rm -rf analysis_out *.log core
 
-# Tự sinh lại dependency ngầm (.d). Bỏ qua khi mục tiêu là clean/distclean/listvars/cxxmacros.
-ifneq ($(if $(MAKECMDGOALS),$(filter-out clean distclean listvars cxxmacros,$(MAKECMDGOALS)),true),)
-    -include $(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.d,$(SOURCES))
-endif
-$(BINDIR)/%.d: $(SRCDIR)/%.cpp
+.PHONY: bench memory codesize
+bench: $(EXEC)
+	scripts/run_micro.sh
+
+memory: $(EXEC)
+	scripts/measure_memory.sh
+
+codesize:
+	scripts/measure_codesize.sh
+
+.PHONY: tls analyze tlsnetem
+tls:
+	scripts/bench_tls.sh
+
+tlsnetem:
+	cd tls13-scratch && ./bench_netem.sh
+
+analyze:
+	python3 scripts/analyze.py
+
+.PHONY: tlsmini tlsclient
+tlsmini: $(BINDIR)/tls_mini_server
+tlsclient: $(BINDIR)/tls_timer_client
+
+$(BINDIR)/tls_mini_server: $(SRCDIR)/tls_mini_server.c
 	@mkdir -p $(BINDIR)
-	$(CXX) -MM $(CPPFLAGS) -MT $(BINDIR)/$*.o -MT $@ $< >$@ || rm -f $@
+	$(CC) $(CPPFLAGS) -Wall -O2 -o $@ $< $(LDFLAGS) $(OSSL_A_SSL) $(LDLIBS)
 
-# In ra các biến của make (phục vụ debug).
-listvars:
-	@true
-	$(foreach v, \
-	  $(sort $(filter-out .% ^% @% _% *% \%% <% +% ?% BASH% LS_COLORS SSH% VTE% XDG% F_%,$(.VARIABLES))), \
-	  $(info $(v) = "$($(v))"))
-# In ra các macro C++ định nghĩa sẵn (phục vụ debug).
-cxxmacros:
-	@$(CPP) $(CXXFLAGS) -x c++ -dM /dev/null | sort
+$(BINDIR)/tls_timer_client: $(SRCDIR)/tls_timer_client.c
+	@mkdir -p $(BINDIR)
+	$(CC) $(CPPFLAGS) -Wall -O2 -o $@ $< $(LDFLAGS) $(OSSL_A_SSL) $(LDLIBS)
 
-.PHONY: default exec run clean distclean listvars cxxmacros
+# liboqs-direct micro-bench: the SAME bench_oqs.cpp built against BOTH trees
+# (ref = portable C, opt = SIMD) -> build/bench_oqs_{ref,opt}. Prefixes from
+# versions.env. Drive both with `make oqs` (or scripts/run_oqs.sh).
+LIBOQS_REF := $(shell bash -c '. "$(ROOT_DIR)scripts/versions.env" 2>/dev/null && echo "$$LIBOQS_PREFIX_REF"')
+LIBOQS_OPT := $(shell bash -c '. "$(ROOT_DIR)scripts/versions.env" 2>/dev/null && echo "$$LIBOQS_PREFIX_OPT"')
+OQSFLAGS := -O2 -Wall -pthread
+
+.PHONY: bench_oqs oqs
+bench_oqs: $(BINDIR)/bench_oqs_ref $(BINDIR)/bench_oqs_opt
+
+# build BOTH binaries, then run the ref-vs-opt sweep -> data/bench_oqs_<arch>.csv
+oqs: bench_oqs
+	scripts/run_oqs.sh
+
+$(BINDIR)/bench_oqs_ref: $(SRCDIR)/bench_oqs.cpp
+	@mkdir -p $(BINDIR)
+	@[ -d "$(LIBOQS_REF)/include" ] || { echo "liboqs ref missing at $(LIBOQS_REF) (run scripts/build_liboqs.sh ref)"; exit 1; }
+	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_REF)/include -L$(LIBOQS_REF)/lib -loqs -Wl,-rpath,$(LIBOQS_REF)/lib -lm -o $@
+
+$(BINDIR)/bench_oqs_opt: $(SRCDIR)/bench_oqs.cpp
+	@mkdir -p $(BINDIR)
+	@[ -d "$(LIBOQS_OPT)/include" ] || { echo "liboqs opt missing at $(LIBOQS_OPT) (run scripts/build_liboqs.sh opt)"; exit 1; }
+	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_OPT)/include -L$(LIBOQS_OPT)/lib -loqs -Wl,-rpath,$(LIBOQS_OPT)/lib -lm -o $@
+
+.PHONY: help
+help:
+	@grep -E '^#   make ' $(firstword $(MAKEFILE_LIST)) | sed 's/^#   /  /'
