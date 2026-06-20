@@ -1,4 +1,4 @@
-# =============================================================================
+// =============================================================================
 // bench_evp.cpp  —  Microbenchmark cryptographic primitives via OpenSSL 3.x EVP 
 // Run:
 //   ./build/bench_evp <family> <param>
@@ -15,7 +15,7 @@
 // Build (RECOMMENDED to use the Makefile, do NOT run g++ by hand):
 //   make                              # system OpenSSL
 //   make OSSLROOT=/pqc/openssl        # self-built OpenSSL (PQC native)
-# =============================================================================
+// =============================================================================
 
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
