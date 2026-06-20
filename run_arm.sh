@@ -23,7 +23,7 @@ for i in $(seq 1 "$BATCHES"); do
   cp "data/summary_micro_${ARCH}.csv" "data/raw/${ARCH}/summary_batch$i.csv"
 
   # --- Luot 2: rsa 7680 + rsa 15360 -- 100 vong ops, keygen=100 ---
-  MICRO_ALGOS="$SLOW" BENCH_WARMUP=10 BENCH_ITERS=100 BENCH_KEYGEN_ITERS=100 make bench
+  MICRO_ALGOS="$SLOW" BENCH_WARMUP=10 BENCH_ITERS=100 BENCH_KEYGEN_ITERS=5 make bench
   tail -n +2 "data/summary_micro_${ARCH}.csv" >> "data/raw/${ARCH}/summary_batch$i.csv"
   cp "data/raw/${ARCH}/summary_batch$i.csv" "data/summary_micro_${ARCH}.csv"
 
