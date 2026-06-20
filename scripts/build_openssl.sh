@@ -1,7 +1,11 @@
 #!/bin/bash
-# bash scripts/build_openssl.sh
-# FORCE=1       rebuild over an existing install
-# SKIP_TESTS=1  skip `make test` (CI / slow ARM)
+# =============================================================================
+# Usage:
+#   bash scripts/build_openssl.sh
+#   FORCE=1       rebuild over an existing install
+#   SKIP_TESTS=1  skip `make test` (CI / slow ARM)
+# =============================================================================
+
 set -e
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

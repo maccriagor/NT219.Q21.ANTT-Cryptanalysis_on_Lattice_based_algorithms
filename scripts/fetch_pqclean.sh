@@ -44,4 +44,4 @@ for s in $SCHEMES; do
     echo "skip : $s ($VARIANT not provided upstream)"
   fi
 done
-echo "DONE. Per-scheme libraries under $SRC_ROOT/PQClean (use 'size' on lib*.a for WP5)."
+echo "DONE. Per-scheme libraries under $SRC_ROOT/PQClean (use 'size' on lib*.a)."

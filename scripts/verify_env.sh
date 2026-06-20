@@ -2,7 +2,7 @@
 # =============================================================================
 # verify_env.sh - check the custom OpenSSL really has ML-KEM/ML-DSA, then dump the
 # build environment (compilers, flags, CPU) to docs/env_report_<arch>.txt for the writeup.
-# Run:
+# Usage:
 #   bash scripts/verify_env.sh
 # =============================================================================
 
