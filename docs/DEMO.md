@@ -78,7 +78,7 @@ HOST/PORT : bind nginx (Default 127.0.0.1:4433)
 vd: ITERS=2000 CERTS="mldsa65" KEX_GROUPS="X25519MLKEM768" bash nginx-bench/run.sh
 output: data/nginx_handshake_x86_64.csv
 
-# TLS 1.3 handshake "tự làm" — Track D (illustrated-tls13, thin OpenSSL)
+# TLS 1.3 handshake "tự làm" — Track D (thin OpenSSL)
 18. Build + chạy:
     make -C tls13-scratch                          # build client + server
     make -C tls13-scratch/server cert              # cert self-signed (hoặc cp cert mldsa65 vào để test PQC auth)

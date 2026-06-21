@@ -141,9 +141,8 @@ static std::string g_algo;
 
 // ---------------------------------------------------------------------------
 // Runner: measure one op over N iterations + warm-up.
-//   Same shape as bench_evp.cpp's run_op and liboqs ds_benchmark.h's
-//   TIME_OPERATION_ITERATIONS: fn() performs EXACTLY ONE operation; the timed
-//   for-loop brackets each call with the wall clock and the cycle counter.
+//   Same shape as bench_evp.cpp's run_op: fn() performs EXACTLY ONE operation;
+//   the timed for-loop brackets each call with the wall clock and cycle counter.
 // ---------------------------------------------------------------------------
 static void run_op(const char *op, size_t iters, size_t warmup,
                    const std::function<void()> &fn) {
@@ -241,8 +240,8 @@ static void check_sig_conformance(const OQS_SIG *sig) {
 // ===========================================================================
 // ML-KEM  (FIPS 203)  via OQS_KEM_*
 //   keygen = Alg.19 ; encap = Alg.20 (ek -> c,K, NO message) ; decap = Alg.21.
-//   Mirrors liboqs tests/speed_kem.c: buffers allocated ONCE; each op timed in
-//   its own loop; decap reuses the SAME fixed ciphertext.
+//   Buffers allocated ONCE; each op timed in its own loop; decap reuses the
+//   SAME fixed ciphertext.
 // ===========================================================================
 static void bench_kem(const char *name) {
     size_t iters  = env_size("BENCH_ITERS", 2000);
@@ -267,7 +266,7 @@ static void bench_kem(const char *name) {
     std::vector<uint8_t> ss_d(kem->length_shared_secret);
 
     // keygen [Alg.19]: overwrite pk/sk each iteration; after the loop pk/sk hold
-    // a valid keypair (same approach as speed_kem.c).
+    // a valid keypair.
     run_op("keygen", kiters, warmup, [&]() {
         if (OQS_KEM_keypair(kem.get(), pk.data(), sk.data()) != OQS_SUCCESS)
             fatal("OQS_KEM_keypair");
@@ -306,9 +305,9 @@ static void bench_kem(const char *name) {
 // ML-DSA  (FIPS 204)  via OQS_SIG_*
 //   keygen / sign / verify. Sign is randomized ("hedged"); rejection sampling
 //   happens INSIDE each OQS_SIG_sign call (no re-init at the API level, unlike
-//   the OpenSSL EVP ML-DSA path). Mirrors liboqs tests/speed_sig.c: fixed
-//   message (OQS_randombytes), each op timed in its own loop, verify re-checks
-//   the SAME fixed (message, signature) pair.
+//   the OpenSSL EVP ML-DSA path). Fixed message (OQS_randombytes), each op
+//   timed in its own loop, verify re-checks the SAME fixed (message, signature)
+//   pair.
 // ===========================================================================
 static void bench_sig(const char *name) {
     size_t iters  = env_size("BENCH_ITERS", 2000);
@@ -329,7 +328,7 @@ static void bench_sig(const char *name) {
     std::vector<uint8_t> pk(sig->length_public_key);
     std::vector<uint8_t> sk(sig->length_secret_key);
     std::vector<uint8_t> signature(sig->length_signature);
-    const size_t msg_len = 50;                 // same as speed_sig.c
+    const size_t msg_len = 50;                 // fixed test message length
     std::vector<uint8_t> msg(msg_len);
     OQS_randombytes(msg.data(), msg_len);      // fixed random message (reused)
     size_t sig_len = 0;

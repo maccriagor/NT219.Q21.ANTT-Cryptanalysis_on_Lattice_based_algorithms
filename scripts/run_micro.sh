@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
 # run_micro.sh - Run the EVP microbenchmark across the full algorithm matrix.
 #
@@ -6,8 +6,6 @@
 #   data/raw/<arch>/<algo>.raw.csv   raw samples (from BENCH_CSV)
 #   data/raw/<arch>/<algo>.kv.txt    key-value summary (bench stdout)
 #   data/summary_micro_<arch>.csv    long format: algo,metric,value
-#
-# The same way the official liboqs speed_kem/speed_sig and `openssl speed` tools work.
 # =============================================================================
 
 set -u

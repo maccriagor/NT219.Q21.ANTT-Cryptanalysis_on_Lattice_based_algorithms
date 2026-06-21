@@ -442,7 +442,7 @@ static void bench_mldsa(const char *name) {    // name e.g. "ML-DSA-65"
             fatal("ML-DSA sign len");
         sig.resize(siglen);
         run_op("sign", iters, warmup, [&]() {
-            // rejection sampling -> must re-init each iteration (per the OpenSSL sample)
+            // rejection sampling -> must re-init each iteration
             size_t outl = sig.size();
             if (EVP_PKEY_sign_message_init(sctx, sig_alg, nullptr) <= 0
                 || EVP_PKEY_sign(sctx, sig.data(), &outl, msg.data(), msg.size()) <= 0)

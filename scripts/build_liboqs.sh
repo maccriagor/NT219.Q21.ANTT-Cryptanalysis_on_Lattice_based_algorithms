@@ -25,7 +25,7 @@ esac
 # liboqs links against OUR OpenSSL: it must be built first (fail fast, clearly).
 [ -x "$OSSL_PREFIX/bin/openssl" ] || { echo "OpenSSL missing at $OSSL_PREFIX: run scripts/build_openssl.sh first"; exit 1; }
 
-if [ -e "$PREFIX/lib/liboqs.so" ] && [ "${FORCE:-0}" != "1" ]; then
+if [ -e "$PREFIX/lib/liboqs.a" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "liboqs($VARIANT) already installed at $PREFIX (FORCE=1 to rebuild). Skipping."
   exit 0
 fi
@@ -52,7 +52,8 @@ fi
 
 cmake -GNinja -S . -B "build-$VARIANT" \
   -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-  -DBUILD_SHARED_LIBS=ON \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
   -DOQS_DIST_BUILD=OFF \
   -DOQS_OPT_TARGET="$OPT_TARGET" \
   -DOQS_USE_OPENSSL=ON \

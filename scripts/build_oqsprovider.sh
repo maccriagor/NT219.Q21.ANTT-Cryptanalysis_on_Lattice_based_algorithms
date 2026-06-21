@@ -1,13 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
 # build_oqsprovider.sh [ref|opt] - Build the OQS Provider for OpenSSL 3.
 #
-# The brief lists "OpenSSL OQS fork" for TLS integration. That 1.1.1 fork is
-# OFFICIALLY DEPRECATED/archived; its designated successor is this provider
-# ("The OQS Provider for OpenSSL 3 provides full support for post-quantum key
-# exchange and authentication in TLS 1.3, X.509, S/MIME" - deprecation notice,
-# github.com/open-quantum-safe/openssl). Build steps follow the oqs-provider
-# README (cmake -DOPENSSL_ROOT_DIR -Dliboqs_DIR; build; install).
+# The brief lists the legacy "OpenSSL OQS fork" for TLS integration; that 1.1.1
+# fork is deprecated, and this provider is its successor for OpenSSL 3 (PQC key
+# exchange + authentication in TLS 1.3 / X.509 / S/MIME). Build:
+# cmake -DOPENSSL_ROOT_DIR -Dliboqs_DIR; build; install.
 # Requires: build_openssl.sh and build_liboqs.sh <variant> done first.
 # =============================================================================
 set -eu
@@ -21,7 +19,7 @@ case "$VARIANT" in
   opt) LIBOQS_PREFIX="$LIBOQS_PREFIX_OPT" ;;
   *) echo "Usage: $0 ref|opt"; exit 1 ;;
 esac
-[ -e "$LIBOQS_PREFIX/lib/liboqs.so" ] || { echo "liboqs($VARIANT) missing: run build_liboqs.sh $VARIANT"; exit 1; }
+[ -e "$LIBOQS_PREFIX/lib/liboqs.a" ] || { echo "liboqs($VARIANT) missing: run build_liboqs.sh $VARIANT"; exit 1; }
 [ -x "$OSSL_PREFIX/bin/openssl" ]     || { echo "OpenSSL missing: run build_openssl.sh"; exit 1; }
 
 # Download EXACTLY the pinned release. To build a different release later:

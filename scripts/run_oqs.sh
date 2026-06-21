@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
-# run_oqs.sh - WP3 / cross-check runner. Drives build/bench_oqs_{ref,opt} over
+# run_oqs.sh - cross-check runner. Drives build/bench_oqs_{ref,opt} over
 # the PQC matrix and parses their EVP-style key-value output into ONE tidy CSV.
 # analyze.py turns it into an "EVP vs liboqs ref/opt" comparison table:
-#   - EVP path  = bench_evp (WP2 summary)         -> real application path
+#   - EVP path  = bench_evp (summary)             -> real application path
 #   - liboqs ref = bench_oqs_ref (SIMD off)       -> portable C
-#   - liboqs opt = bench_oqs_opt (NEON/AVX2 on)   -> the WP3 optimization
+#   - liboqs opt = bench_oqs_opt (NEON/AVX2 on)   -> the optimization
 #
 # Output:  data/bench_oqs_<arch>.csv
 #          (arch,variant,algo,op,wall_median_ns,wall_p95_ns,cyc_median)
@@ -19,7 +19,7 @@
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
-# liboqs.so pulls libcrypto.so -> activate our OpenSSL (rpath handles liboqs itself).
+# bench_oqs links liboqs.a + libcrypto.a statically; setenv is sourced only for env parity.
 # shellcheck disable=SC1091
 [ -f "$HERE/setenv.sh" ] && source "$HERE/setenv.sh" >/dev/null 2>&1 || true
 ARCH="$(uname -m)"

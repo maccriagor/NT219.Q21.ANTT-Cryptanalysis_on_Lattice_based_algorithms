@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# gen_tls_certs.sh - generate self-signed TLS server certs for the WP4 matrix,
+# gen_tls_certs.sh - generate self-signed TLS server certs for the matrix,
 # grouped by NIST security category (like-for-like comparison).
 #
 # Usage:

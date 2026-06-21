@@ -1,16 +1,4 @@
-// Track D client -- y chang syncsynchalt/illustrated-tls13 (client/main.c).
-// Base file from https://wiki.openssl.org/index.php/Simple_TLS_Server
-// licensed via OpenSSL License https://www.openssl.org/source/license.html
-//
-// This is a STANDARD OpenSSL TLS 1.3 client (the SSL_* API), NOT a hand-rolled
-// protocol. Exactly like illustrated-tls13: SSLv23_client_method capped to
-// TLS 1.3, SSL_VERIFY_NONE, a keylog callback, then connect + SSL_do_handshake.
-// It links the project OpenSSL 3.6.2 (native ML-KEM), so the OpenSSL >=3.5
-// default group list already offers X25519MLKEM768 -> a PQC hybrid handshake
-// happens by default against a server that supports it.
-//
-// The ONLY thing added on top of illustrated-tls13 is handshake LATENCY: loop
-// the handshake and time SSL_do_handshake with CLOCK_MONOTONIC_RAW.
+// client/main.c - TLS 1.3 client
 //
 // Usage: ./client [host] [port] [count] [group]
 //   defaults: 127.0.0.1 8400 1 (OpenSSL default group list)

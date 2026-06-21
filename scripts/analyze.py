@@ -93,7 +93,7 @@ def bar_chart(labels, series, title, ylabel, fname, log=False):
 
 
 def load_micro(arch):
-    """WP2 source for one arch. Prefer the K independent batches
+    """Source for one arch. Prefer the K independent batches
     (data/raw/<arch>/summary_batch*.csv) and report the MEDIAN-OF-MEDIANS, also
     writing summary_agg_<arch>.csv (+ _spread.csv: n,median,mean,min,max,cv_pct;
     cv = batch-to-batch noise, high = unstable e.g. RSA keygen). Fall back to the
@@ -126,14 +126,14 @@ def load_micro(arch):
                 ws.writerow([algo, metric, len(vals), fmt_val(med), fmt_val(mean),
                              fmt_val(min(vals)), fmt_val(max(vals)), f"{cv:.2f}"])
                 table[algo][metric] = med
-        print(f"  WP2 {arch}: median-of-medians over {len(batches)} batch(es) "
+        print(f"  {arch}: median-of-medians over {len(batches)} batch(es) "
               f"-> data/{agg.name} (+ _spread.csv)")
     elif (DATA / f"summary_micro_{arch}.csv").exists():
         for r in read_csv(DATA / f"summary_micro_{arch}.csv"):
             v = fnum(r.get("value"))
             if v is not None:
                 table[r["algo"]][r["metric"]] = v
-        print(f"  WP2 {arch}: single batch (summary_micro_{arch}.csv)")
+        print(f"  {arch}: single batch (summary_micro_{arch}.csv)")
     return table
 
 
@@ -144,7 +144,7 @@ _batch_arches = {d.name for d in (DATA / "raw").glob("*")
 arches = sorted({p.stem.removeprefix("summary_micro_")
                  for p in DATA.glob("summary_micro_*.csv")} | _batch_arches)
 
-# ---- 1) Microbenchmark latency (WP2): median-of-medians over K batches ------
+# ---- 1) Microbenchmark latency: median-of-medians over K batches ------------
 micro = {arch: load_micro(arch) for arch in arches}  # arch -> algo -> metric -> value
 
 for arch, table in micro.items():
@@ -175,7 +175,7 @@ if len(micro) >= 2:
         report.append(f"\n## Cross-platform ratio ({a2} / {a1})\n")
         report.append(md_table(["algo", "metric", a1, a2, "ratio"], rows))
 
-# ---- 2) Peak RSS (WP5) ------------------------------------------------------
+# ---- 2) Peak RSS ------------------------------------------------------------
 for p in sorted(DATA.glob("memory_*.csv")):
     arch = p.stem.removeprefix("memory_")
     rows = read_csv(p)
@@ -189,7 +189,7 @@ for p in sorted(DATA.glob("memory_*.csv")):
               [(arch, [fnum(r["peak_rss_kb"]) for r in rows])],
               f"Peak RSS ({arch})", "KB", f"memory_{arch}.png")
 
-# ---- 3) Code size (WP5) -----------------------------------------------------
+# ---- 3) Code size -----------------------------------------------------------
 for p in sorted(DATA.glob("codesize_*.csv")):
     arch = p.stem.removeprefix("codesize_")
     rows = read_csv(p)
@@ -205,7 +205,7 @@ for p in sorted(DATA.glob("codesize_*.csv")):
               [(arch, [fnum(r["total_bytes"]) / 1024 for r in rows])],
               f"Code size ({arch})", "KiB", f"codesize_{arch}.png", log=True)
 
-# ---- 3b) PQClean per-scheme code size (WP5: the trustworthy PER-ALGORITHM number)
+# ---- 3b) PQClean per-scheme code size (the trustworthy PER-ALGORITHM number)
 # The codesize_*.csv above is the MIXED libcrypto/liboqs; the real per-scheme PQC
 # size comes from `size -t lib<scheme>_<impl>.a` saved to data/raw/<arch>/
 # pqclean_*_size.txt (each line: "<lib> text data bss dec hex (TOTALS)"; the §4.3/
@@ -241,7 +241,7 @@ for d in sorted((DATA / "raw").glob("*")):
                   f"PQClean per-scheme code size ({arch})", "bytes",
                   f"pqclean_codesize_{arch}.png", log=True)
 
-# ---- 4) TLS 1.3 handshake via nginx (WP4) ----------------------------------
+# ---- 4) TLS 1.3 handshake via nginx -----------------------------------------
 # data/nginx_handshake_<arch>.csv (from nginx-bench/run.sh): one row per
 # (cert, KEX group) with handshake median/mean/p95 over ITERS connections.
 for p in sorted(DATA.glob("nginx_handshake_*.csv")):
@@ -267,7 +267,7 @@ for p in sorted(DATA.glob("nginx_handshake_*.csv")):
 
 # ---- 5b) EVP vs liboqs ref/opt cross-check (bench_oqs) ----------------------
 # data/bench_oqs_<arch>.csv (from scripts/run_oqs.sh) carries the liboqs-DIRECT
-# medians; join them with the WP2 EVP medians (same algo/op names, e.g.
+# medians; join them with the EVP medians (same algo/op names, e.g.
 # "encap-wall-median-ns") to show EVP vs liboqs-ref vs liboqs-opt side by side:
 # a measurement-soundness cross-check AND the SIMD speedup in one table.
 for p in sorted(DATA.glob("bench_oqs_*.csv")):

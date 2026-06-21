@@ -62,7 +62,7 @@ dkms.conf
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-# liboqs ref/neon build trees from WP3 (build-ref/, build-neon/)
+# liboqs ref/neon build trees (build-ref/, build-neon/)
 /build-*/
 
 # Third-party sources if accidentally cloned INTO the repo (huge; keep out)
@@ -76,7 +76,7 @@ cmake_install.cmake
 *.log
 core
 
-# Secrets -- NEVER commit private keys (WP4 creates srv.key, ca.key, ...)
+# Secrets -- NEVER commit private keys (cert generation creates srv.key, ca.key, ...)
 *.key
 *.key.pem
 *-prv.pem

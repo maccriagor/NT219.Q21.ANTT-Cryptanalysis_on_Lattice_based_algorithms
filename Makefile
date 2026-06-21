@@ -94,6 +94,9 @@ analyze:
 # versions.env. Drive both with `make oqs` (or scripts/run_oqs.sh).
 LIBOQS_REF := $(shell bash -c '. "$(ROOT_DIR)scripts/versions.env" 2>/dev/null && echo "$$LIBOQS_PREFIX_REF"')
 LIBOQS_OPT := $(shell bash -c '. "$(ROOT_DIR)scripts/versions.env" 2>/dev/null && echo "$$LIBOQS_PREFIX_OPT"')
+# Static liboqs archives (link directly; no shared .so / rpath).
+LIBOQS_A_REF := $(LIBOQS_REF)/lib/liboqs.a
+LIBOQS_A_OPT := $(LIBOQS_OPT)/lib/liboqs.a
 OQSFLAGS := -O2 -Wall -pthread
 
 .PHONY: bench_oqs oqs
@@ -105,13 +108,13 @@ oqs: bench_oqs
 
 $(BINDIR)/bench_oqs_ref: $(SRCDIR)/bench_oqs.cpp
 	@mkdir -p $(BINDIR)
-	@[ -d "$(LIBOQS_REF)/include" ] || { echo "liboqs ref missing at $(LIBOQS_REF) (run scripts/build_liboqs.sh ref)"; exit 1; }
-	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_REF)/include -L$(LIBOQS_REF)/lib -loqs -Wl,-rpath,$(LIBOQS_REF)/lib -lm -o $@
+	@[ -f "$(LIBOQS_A_REF)" ] || { echo "liboqs ref static lib missing at $(LIBOQS_A_REF) (run scripts/build_liboqs.sh ref)"; exit 1; }
+	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_REF)/include $(LIBOQS_A_REF) $(OSSL_A) -lm -ldl -o $@
 
 $(BINDIR)/bench_oqs_opt: $(SRCDIR)/bench_oqs.cpp
 	@mkdir -p $(BINDIR)
-	@[ -d "$(LIBOQS_OPT)/include" ] || { echo "liboqs opt missing at $(LIBOQS_OPT) (run scripts/build_liboqs.sh opt)"; exit 1; }
-	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_OPT)/include -L$(LIBOQS_OPT)/lib -loqs -Wl,-rpath,$(LIBOQS_OPT)/lib -lm -o $@
+	@[ -f "$(LIBOQS_A_OPT)" ] || { echo "liboqs opt static lib missing at $(LIBOQS_A_OPT) (run scripts/build_liboqs.sh opt)"; exit 1; }
+	$(CXX) $(OQSFLAGS) $< -I$(LIBOQS_OPT)/include $(LIBOQS_A_OPT) $(OSSL_A) -lm -ldl -o $@
 
 .PHONY: help
 help:

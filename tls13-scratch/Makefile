@@ -1,5 +1,11 @@
-# tls13-scratch/Makefile -- track D (y chang illustrated-tls13): thin OpenSSL
-# server + client, both on the standard SSL_* API (no hand-rolled protocol).
+# =============================================================================
+# tls13-scratch/Makefile
+# server + client on the standard SSL_* API (no hand-rolled protocol).
+# Usage:
+#   make            # build server + client
+#   make cert       # self-signed server cert
+#   make clean
+# =============================================================================
 .PHONY: all server client cert clean
 all: server client
 server: ; $(MAKE) -C server

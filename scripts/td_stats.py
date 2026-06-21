@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""td_stats.py - tóm tắt thống kê handshake Track-D (tls13-scratch bench mode).
-
-Mỗi file data/td_<label>_<arch>.csv là MỘT dòng "t1,t2,...,tN" (ms, raw).
-Script bỏ warm-up (W handshake đầu) rồi in median/mean/std/p95/p99/min/max
-+ khoảng tin cậy 95% của median (bootstrap). Nếu có nhãn 'x25519' làm mốc,
-in thêm % overhead của các nhóm khác so với nó (theo median) kèm CI bootstrap.
-
-Dùng:
-  python3 scripts/td_stats.py                      # đọc mọi data/td_*.csv
-  python3 scripts/td_stats.py data/td_hybrid_x86_64.csv ...
-  WARMUP=20 python3 scripts/td_stats.py            # đổi số handshake bỏ đầu
-Chỉ dùng thư viện chuẩn (không cần numpy/scipy).
-"""
+# =============================================================================
+# td_stats.py - Summarize Track-D handshake stats (tls13-scratch bench mode).
+#
+# Each data/td_<label>_<arch>.csv is ONE line "t1,t2,...,tN" (ms, raw). Drops
+# the warm-up (first W handshakes), then prints median/mean/std/p95/p99/min/max
+# + a bootstrap 95% CI of the median, for both the full and the steady
+# (post-warm-up) set per label. With an 'x25519' label present, also prints each
+# other group's % overhead vs it (by median, steady set) with a bootstrap CI.
+#
+# Usage:
+#   python3 scripts/td_stats.py                       # read every data/td_*.csv
+#   python3 scripts/td_stats.py data/td_hybrid_x86_64.csv ...
+#
+# Environment variables:
+#   WARMUP=20   number of leading handshakes dropped as warm-up
+#   BOOT=5000   number of bootstrap resamples
+# =============================================================================
 import glob
 import os
 import random
@@ -19,13 +23,13 @@ import statistics as st
 import sys
 from pathlib import Path
 
-WARMUP = int(os.environ.get("WARMUP", "20"))   # số handshake đầu coi là warm-up
-BOOT = int(os.environ.get("BOOT", "5000"))     # số lần resample bootstrap
-random.seed(12345)                              # tái lập được
+WARMUP = int(os.environ.get("WARMUP", "20"))   # leading handshakes treated as warm-up
+BOOT = int(os.environ.get("BOOT", "5000"))     # number of bootstrap resamples
+random.seed(12345)                             # reproducible
 
 
 def pct(xs, p):
-    """Bách phân vị p (0..100), nội suy tuyến tính (kiểu numpy mặc định)."""
+    """Percentile p (0..100), linear interpolation (numpy default style)."""
     if not xs:
         return float("nan")
     s = sorted(xs)
@@ -38,7 +42,7 @@ def pct(xs, p):
 
 
 def boot_median_ci(xs, b=BOOT):
-    """CI95 của median bằng bootstrap (percentile method)."""
+    """95% CI of the median via bootstrap (percentile method)."""
     n = len(xs)
     if n < 2:
         return (float("nan"), float("nan"))
@@ -84,7 +88,7 @@ def summarize(xs):
 def main():
     files = sys.argv[1:] or sorted(glob.glob("data/td_*.csv"))
     if not files:
-        print("Khong tim thay data/td_*.csv (chay tu thu muc goc repo).")
+        print("No data/td_*.csv found (run from the repo root directory).")
         return
 
     groups = {}  # label -> {"full": [...], "steady": [...]}
@@ -92,19 +96,19 @@ def main():
         xs = load(f)
         lab = label_of(f)
         if not xs:
-            print(f"[{lab:14s}] {f}: RONG (0 so) - bo qua")
+            print(f"[{lab:14s}] {f}: EMPTY (0 numbers) - skipped")
             continue
         steady = xs[WARMUP:] if len(xs) > WARMUP else xs
-        groups[lab] = {"full": xs, "steady": steady, "path": f}
+        groups[lab] = {"full": xs, "steady": steady}
 
     if not groups:
-        print("Khong co file nao co du lieu.")
+        print("No file has any data.")
         return
 
     hdr = (f"{'group':16s}{'set':8s}{'n':>5s}{'median':>9s}{'mean':>9s}"
            f"{'std':>8s}{'p95':>9s}{'p99':>9s}{'min':>8s}{'max':>9s}"
            f"   CI95(median)")
-    print(f"\n=== Track-D handshake latency (ms)  |  warm-up bo {WARMUP} handshake dau ===")
+    print(f"\n=== Track-D handshake latency (ms)  |  warm-up: drop first {WARMUP} handshakes ===")
     print(hdr)
     print("-" * len(hdr))
     for lab, g in groups.items():
@@ -121,7 +125,7 @@ def main():
                   f"{s['p99']:>9.3f}{s['min']:>8.3f}{s['max']:>9.3f}   {ci}")
         print()
 
-    # Overhead so voi x25519 (neu co), tinh tren tap steady, theo median.
+    # Overhead relative to x25519 (if present), computed on the steady set, by median.
     base = None
     for cand in ("x25519", "X25519"):
         if cand in groups:
@@ -131,14 +135,14 @@ def main():
         bx = groups[base]["steady"]
         bmed = st.median(bx)
         nb = len(bx)
-        print(f"=== Overhead handshake so voi {base} (median, tap steady) ===")
+        print(f"=== Handshake overhead relative to {base} (median, steady set) ===")
         for lab, g in groups.items():
             if lab == base:
                 continue
             gx = g["steady"]
             gmed = st.median(gx)
             over = (gmed / bmed - 1.0) * 100.0
-            # CI bootstrap cho ti so median (2 nhom doc lap -> resample rieng)
+            # bootstrap CI for the median ratio (2 independent groups -> resample separately)
             ng = len(gx)
             ratios = []
             for _ in range(BOOT):

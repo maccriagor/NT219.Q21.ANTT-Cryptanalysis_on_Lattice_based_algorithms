@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# measure_memory.sh - WP5 peak memory (RSS) per algorithm, via GNU `time -v`.
+# measure_memory.sh - peak memory (RSS) per algorithm, via GNU `time -v`.
 #
 # Usage:
 #   bash scripts/measure_memory.sh

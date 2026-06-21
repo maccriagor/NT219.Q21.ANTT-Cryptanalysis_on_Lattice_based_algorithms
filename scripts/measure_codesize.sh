@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# measure_codesize.sh - WP5 code size of the built crypto libraries, via `size`.
+# measure_codesize.sh - code size of the built crypto libraries, via `size`.
 #
 # Usage:
 #   bash scripts/measure_codesize.sh                       # auto-find libcrypto + liboqs

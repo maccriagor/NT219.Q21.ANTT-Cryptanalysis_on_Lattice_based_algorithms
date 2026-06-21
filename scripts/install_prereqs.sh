@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
 # Usage:
 #   bash ./scripts/install_prereqs.sh

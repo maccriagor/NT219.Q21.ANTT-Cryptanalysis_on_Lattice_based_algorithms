@@ -1,11 +1,9 @@
-// Track D server -- y chang syncsynchalt/illustrated-tls13 (server/main.c).
-// Base file from https://wiki.openssl.org/index.php/Simple_TLS_Server
-// licensed via OpenSSL License https://www.openssl.org/source/license.html
+// server/main.c
 //
-// Standard OpenSSL TLS 1.3 server (the SSL_* API), NOT a hand-rolled protocol.
-// Links the project OpenSSL 3.6.2, so its OpenSSL >=3.5 default group list
-// already accepts X25519MLKEM768 / MLKEM768 -- the client decides which group.
-// Drop in an ML-DSA cert (e.g. $HOME/pqc/tls/mldsa65.cert.pem) to test PQC auth.
+// Standard OpenSSL TLS 1.3 server (the SSL_* API). Links the project OpenSSL
+// 3.6.2, so its default group list already accepts X25519MLKEM768 / MLKEM768 --
+// the client decides which group. Drop in an ML-DSA cert (e.g.
+// $HOME/pqc/tls/mldsa65.cert.pem) to test PQC authentication.
 //
 // Usage: ./server [port] [cert] [key]   (defaults: 8400 server.crt server.key)
 

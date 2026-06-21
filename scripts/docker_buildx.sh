@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
 # docker_buildx.sh - Build the reproducible image for BOTH amd64 and arm64
 # with docker buildx (brief 7.3: "docker buildx multiarch").

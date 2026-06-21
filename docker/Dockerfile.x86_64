@@ -4,16 +4,6 @@
 # Run:     docker run -it --rm nt219-pqc
 # Inside, the custom OpenSSL (with ML-KEM/ML-DSA) and bench_evp are prebuilt.
 # =============================================================================
-# DESIGN NOTES
-#   - Brief 7.3 verbatim deliverable: "Provide Dockerfile for x86_64".
-#   - Reuses the repo's own scripts (build_openssl.sh, make, verify_env.sh)
-#     instead of duplicating commands -> single source of truth; if a script
-#     changes, the image follows automatically.
-#   - SKIP_TESTS=1 follows the oqs-demos CI convention (full OpenSSL test
-#     suite is a one-time on-metal task, not a per-image one).
-#   - verify_env.sh at the end makes the IMAGE self-failing when broken.
-#   - Build from the REPO ROOT (COPY needs the context): 
-#       docker build -f docker/Dockerfile.x86_64 -t nt219-pqc .
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
