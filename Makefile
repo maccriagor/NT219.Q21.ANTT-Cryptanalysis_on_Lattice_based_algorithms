@@ -6,10 +6,8 @@
 #   make bench       run all algos -> data/summary_micro_<arch>.csv
 #   make memory      peak RSS per algo -> data/memory_<arch>.csv
 #   make codesize    crypto lib sizes -> data/codesize_<arch>.csv
-#   make tls         TLS 1.3 handshakes -> data/tls_handshake_<arch>.csv
 #   make bench_oqs   build liboqs-direct micro-bench -> build/bench_oqs_{ref,opt}
 #   make oqs         bench_oqs + run ref-vs-opt sweep -> data/bench_oqs_<arch>.csv
-#   make tlsnetem    TLS 1.3 over netem RTT/loss (needs root + sch_netem)
 #   make analyze     aggregate everything into analysis_out/
 #   make help        list these targets
 #   make DEBUG=1     debug build (-O0)
@@ -87,27 +85,9 @@ memory: $(EXEC)
 codesize:
 	scripts/measure_codesize.sh
 
-.PHONY: tls analyze tlsnetem
-tls:
-	scripts/bench_tls.sh
-
-tlsnetem:
-	cd tls13-scratch && ./bench_netem.sh
-
+.PHONY: analyze
 analyze:
 	python3 scripts/analyze.py
-
-.PHONY: tlsmini tlsclient
-tlsmini: $(BINDIR)/tls_mini_server
-tlsclient: $(BINDIR)/tls_timer_client
-
-$(BINDIR)/tls_mini_server: $(SRCDIR)/tls_mini_server.c
-	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) -Wall -O2 -o $@ $< $(LDFLAGS) $(OSSL_A_SSL) $(LDLIBS)
-
-$(BINDIR)/tls_timer_client: $(SRCDIR)/tls_timer_client.c
-	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) -Wall -O2 -o $@ $< $(LDFLAGS) $(OSSL_A_SSL) $(LDLIBS)
 
 # liboqs-direct micro-bench: the SAME bench_oqs.cpp built against BOTH trees
 # (ref = portable C, opt = SIMD) -> build/bench_oqs_{ref,opt}. Prefixes from

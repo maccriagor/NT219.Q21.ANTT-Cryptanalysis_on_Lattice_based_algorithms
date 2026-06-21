@@ -78,4 +78,4 @@ for name in $SET; do
   echo "built: $name  cert=$(stat -c%s "$CRT") bytes  key=$(stat -c%s "$KEY") bytes"
 done
 
-echo "DONE. Certificates in $OUT (next: scripts/bench_tls.sh)"
+echo "DONE. Certificates in $OUT (next: bash scripts/build_nginx.sh then bash nginx-bench/run.sh)"

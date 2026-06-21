@@ -13,7 +13,7 @@
 # directive -> the bench config serves a tiny static file instead).
 #
 # Runtime: like bench_evp, NO rpath is baked in; start nginx from scripts
-# that source setenv.sh (LD_LIBRARY_PATH), as bench_tls_nginx.sh does.
+# that source setenv.sh (LD_LIBRARY_PATH), as nginx-bench/run.sh does.
 #
 # Output: $NGINX_PREFIX (sbin/nginx, conf/, html/, logs/), docs/nginx.commit
 # Requires: build_openssl.sh done. Re-run: idempotent; FORCE=1 to rebuild.
@@ -49,4 +49,4 @@ export LD_LIBRARY_PATH="$OSSL_LIBDIR:${LD_LIBRARY_PATH:-}"
 "$NGINX_PREFIX/sbin/nginx" -V 2>&1 | grep -q "built with OpenSSL 3.6" \
   || { echo "ERROR: nginx not built with our OpenSSL"; exit 1; }
 "$NGINX_PREFIX/sbin/nginx" -V 2>&1 | grep -E "nginx version|built with"
-echo "DONE. Next: scripts/gen_tls_certs.sh then scripts/bench_tls_nginx.sh"
+echo "DONE. Next: scripts/gen_tls_certs.sh then bash nginx-bench/run.sh"

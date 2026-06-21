@@ -8,8 +8,8 @@
 #   data/summary_micro_<arch>.csv   long format: algo,metric,value
 #   data/memory_<arch>.csv          algo,peak_rss_kb
 #   data/codesize_<arch>.csv        file,text_bytes,data_bytes,bss_bytes,total_bytes
-#   data/tls_handshake_<arch>.csv   arch,cert,group,hs_median_ms,...,cert_bytes
-#   data/netem_<arch>.csv           rtt_ms,loss_pct,ok,median_us,p95_us,mean_us,ci95_us
+#   data/bench_oqs_<arch>.csv       arch,variant,algo,op,wall_median_ns,...  (liboqs ref vs opt)
+#   data/nginx_handshake_<arch>.csv arch,cert,group,hs_median_ms,hs_mean_ms,hs_p95_ms,iters,cert_bytes
 #
 # Output: analysis_out/tables.md (+ *.png charts when matplotlib is available)
 # Usage : python3 scripts/analyze.py        (from repo root or anywhere)
@@ -241,17 +241,19 @@ for d in sorted((DATA / "raw").glob("*")):
                   f"PQClean per-scheme code size ({arch})", "bytes",
                   f"pqclean_codesize_{arch}.png", log=True)
 
-# ---- 4) TLS handshake (WP4) -------------------------------------------------
-for p in sorted(DATA.glob("tls_handshake_*.csv")):
-    arch = p.stem.removeprefix("tls_handshake_")
+# ---- 4) TLS 1.3 handshake via nginx (WP4) ----------------------------------
+# data/nginx_handshake_<arch>.csv (from nginx-bench/run.sh): one row per
+# (cert, KEX group) with handshake median/mean/p95 over ITERS connections.
+for p in sorted(DATA.glob("nginx_handshake_*.csv")):
+    arch = p.stem.removeprefix("nginx_handshake_")
     rows = read_csv(p)
     if not rows:
         continue
-    report.append(f"\n## TLS 1.3 handshake ({arch})\n")
+    report.append(f"\n## TLS 1.3 handshake via nginx ({arch})\n")
     report.append(md_table(
-        ["cert", "group", "median_ms", "p95_ms", "hs/s", "conc", "cert_bytes"],
-        [[r["cert"], r["group"], r["hs_median_ms"], r["hs_p95_ms"],
-          r["throughput_hs_s"], r["concurrency"], r["cert_bytes"]] for r in rows]))
+        ["cert", "group", "median_ms", "mean_ms", "p95_ms", "iters", "cert_bytes"],
+        [[r["cert"], r["group"], r["hs_median_ms"], r["hs_mean_ms"],
+          r["hs_p95_ms"], r["iters"], r["cert_bytes"]] for r in rows]))
     ok = [r for r in rows if fnum(r.get("hs_median_ms")) is not None]
     groups = sorted({r["group"] for r in ok})
     certs = sorted({r["cert"] for r in ok})
@@ -260,38 +262,8 @@ for p in sorted(DATA.glob("tls_handshake_*.csv")):
         for c in certs:
             by = {r["group"]: fnum(r["hs_median_ms"]) for r in ok if r["cert"] == c}
             series.append((c, [by.get(g, 0) for g in groups]))
-        bar_chart(groups, series, f"TLS handshake median ({arch})",
-                  "ms", f"tls_latency_{arch}.png")
-        series = []
-        for c in certs:
-            by = {r["group"]: fnum(r["throughput_hs_s"]) for r in ok if r["cert"] == c}
-            series.append((c, [by.get(g, 0) for g in groups]))
-        bar_chart(groups, series, f"TLS handshakes/s, conc={ok[0]['concurrency']} ({arch})",
-                  "handshakes/s", f"tls_throughput_{arch}.png")
-
-# ---- 5) liboqs ref vs opt (WP3: NEON / AVX2 effect) -------------------------
-for p in sorted(DATA.glob("liboqs_speed_*.csv")):
-    arch = p.stem.removeprefix("liboqs_speed_")
-    rows = read_csv(p)
-    by = defaultdict(dict)  # (algo, op) -> variant -> mean_us
-    for r in rows:
-        v = fnum(r.get("mean_us"))
-        if v is not None:
-            by[(r["algo"], r["op"])][r["variant"]] = v
-    pairs = [(a, o, d["ref"], d["opt"], d["ref"] / d["opt"])
-             for (a, o), d in sorted(by.items())
-             if d.get("ref") and d.get("opt")]
-    if not pairs:
-        continue
-    report.append(f"\n## liboqs ref vs opt ({arch}) - speedup = ref/opt\n")
-    report.append(md_table(
-        ["algo", "op", "ref_us", "opt_us", "speedup"],
-        [[a, o, f"{r1:.3f}", f"{r2:.3f}", f"x{sp:.2f}"]
-         for a, o, r1, r2, sp in pairs]))
-    labels = [f"{a}.{o}" for a, o, *_ in pairs]
-    bar_chart(labels, [("opt vs ref", [sp for *_, sp in pairs])],
-              f"Optimization speedup ref->opt ({arch})", "x times",
-              f"liboqs_speedup_{arch}.png")
+        bar_chart(groups, series, f"TLS handshake median via nginx ({arch})",
+                  "ms", f"nginx_handshake_{arch}.png")
 
 # ---- 5b) EVP vs liboqs ref/opt cross-check (bench_oqs) ----------------------
 # data/bench_oqs_<arch>.csv (from scripts/run_oqs.sh) carries the liboqs-DIRECT
@@ -330,91 +302,10 @@ for p in sorted(DATA.glob("bench_oqs_*.csv")):
                       f"bench_oqs SIMD speedup ref->opt ({arch})", "x times",
                       f"bench_oqs_speedup_{arch}.png")
 
-# ---- 6) Self-implemented TLS handshake (methods C, D) ----------------------
-# These per-connection CSVs live under data/raw/<arch>/ (NOT data/), so the
-# globs above never saw them. Summarise handshake_us per method + the track-D
-# client phase breakdown (the phases that change when swapping classical<->PQC).
-def _pctile(sorted_vals, q):
-    if not sorted_vals:
-        return None
-    return sorted_vals[min(len(sorted_vals) - 1, max(0, int(q * len(sorted_vals))))]
-
-SELFIMPL = [  # (label, filename, value_column, has_group_column)
-    ("C tls_mini (server SSL_accept)", "tlsmini_handshakes.csv", "handshake_us", True),
-    ("D track server, 1-thread",       "tlsmini_d_st.csv",       "handshake_us", True),
-    ("D track server, multi-thread",   "tlsmini_d_mt.csv",       "handshake_us", True),
-    ("D track client load, st-server", "load_d_st.csv",          "handshake_us", False),
-    ("D track client load, mt-server", "load_d_mt.csv",          "handshake_us", False),
-]
-for d in sorted((DATA / "raw").glob("*")):
-    if not d.is_dir():
-        continue
-    arch = d.name
-    rows = []
-    for label, fname, col, has_grp in SELFIMPL:
-        f = d / fname
-        if not f.exists():
-            continue
-        drows = read_csv(f)
-        vals = sorted(v for v in (fnum(r.get(col)) for r in drows) if v is not None)
-        if not vals:
-            continue
-        grp = "-"
-        if has_grp and drows and "group" in drows[0]:
-            grp = ",".join(sorted({r["group"] for r in drows if r.get("group")})) or "-"
-        rows.append([label, grp, len(vals),
-                     f"{statistics.median(vals):.1f}", f"{_pctile(vals, 0.95):.1f}"])
-    if rows:
-        report.append(f"\n## Self-implemented TLS handshake - methods C/D ({arch})\n")
-        report.append(md_table(["method", "group", "n", "median_us", "p95_us"], rows))
-        bar_chart([r[0] for r in rows], [("median us", [float(r[3]) for r in rows])],
-                  f"Self-impl TLS handshake median ({arch})", "us",
-                  f"selfimpl_tls_{arch}.png", log=True)
-    pf = d / "tlsmini_d_latency.csv"   # track-D client per-phase breakdown
-    if pf.exists():
-        prows = read_csv(pf)
-        prow = []
-        for ph in ["total_us", "keygen_us", "ecdhe_us", "key_sched_us", "sig_verify_us"]:
-            vals = sorted(v for v in (fnum(r.get(ph)) for r in prows) if v is not None)
-            if vals:
-                prow.append([ph, len(vals), f"{statistics.median(vals):.1f}",
-                             f"{_pctile(vals, 0.95):.1f}"])
-        if prow:
-            report.append(f"\n## Track D handshake phases, client side ({arch})\n")
-            report.append(md_table(["phase", "n", "median_us", "p95_us"], prow))
-            bar_chart([p[0] for p in prow], [("median us", [float(p[2]) for p in prow])],
-                      f"Track D phases median ({arch})", "us", f"trackd_phases_{arch}.png")
-
-# ---- 7) TLS 1.3 handshake over emulated RTT / loss (netem, Track-D) ---------
-# data/netem_<arch>.csv (from tls13-scratch/bench_netem.sh): one row per
-# (RTT, loss) point. Why the sweep matters (RQ3): under real RTT a server flight
-# that exceeds the initial congestion window (RFC 6928) costs an extra round-trip
-# -- the regime where large PQC signatures (ML-DSA) start to hurt. Table + a
-# median-vs-RTT chart with one bar series per loss rate.
-for p in sorted(DATA.glob("netem_*.csv")):
-    arch = p.stem.removeprefix("netem_")
-    rows = [r for r in read_csv(p) if fnum(r.get("median_us")) is not None]
-    if not rows:
-        continue
-    report.append(f"\n## TLS 1.3 handshake over netem RTT/loss ({arch})\n")
-    report.append(md_table(
-        ["rtt_ms", "loss_pct", "ok", "median_us", "p95_us", "mean_us", "ci95_us"],
-        [[r["rtt_ms"], r["loss_pct"], r.get("ok", ""), r["median_us"],
-          r.get("p95_us", ""), r.get("mean_us", ""), r.get("ci95_us", "")]
-         for r in rows]))
-    rtts = sorted({r["rtt_ms"] for r in rows}, key=lambda x: fnum(x) or 0)
-    losses = sorted({r["loss_pct"] for r in rows}, key=lambda x: fnum(x) or 0)
-    series = [(f"loss {L}%",
-               [{r["rtt_ms"]: fnum(r["median_us"])
-                 for r in rows if r["loss_pct"] == L}.get(t, 0) for t in rtts])
-              for L in losses]
-    bar_chart(rtts, series, f"TLS 1.3 handshake median vs RTT ({arch})",
-              "us", f"netem_{arch}.png")
-
 (OUT / "tables.md").write_text("\n".join(report))
 print(f"DONE. Tables: analysis_out/tables.md"
       + ("" if HAVE_MPL else "  (charts skipped: no matplotlib)"))
 if not any(DATA.glob("*.csv")):
     print("WARNING: data/ has no CSVs yet - run 'make bench' / 'make memory' / "
-          "'make codesize' / scripts/bench_tls.sh first")
+          "'make codesize' first")
     sys.exit(1)
