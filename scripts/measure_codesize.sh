@@ -1,28 +1,26 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
-# measure_codesize.sh - WP5 code size of the built crypto libraries, via `size`
-# (text/data/bss/total bytes). Output: data/codesize_<arch>.csv
-# Defaults to the custom OpenSSL libcrypto and liboqs (if present); override:
-#   CODESIZE_LIBS="/path/libcrypto.so /path/liboqs.so" scripts/measure_codesize.sh
+# measure_codesize.sh - WP5 code size of the built crypto libraries, via `size`.
+#
+# Usage:
+#   bash scripts/measure_codesize.sh                       # auto-find libcrypto + liboqs
+#   CODESIZE_LIBS="a.so b.a" bash scripts/measure_codesize.sh   # measure given files
+#   E.g: CODESIZE_LIBS="lib/libml-kem-768_clean.a ..." bash scripts/measure_codesize.sh
+# 
+# Output: data/codesize_<arch>.csv  (file,text,data,bss,total in bytes)
 # =============================================================================
-# DESIGN NOTES
-#   - Tool = binutils `size` (brief 7.4: "size utility, readelf -S"):
-#     text = machine code, data = initialized globals (tables), bss =
-#     zero-filled; total = their sum. Storage-side metric (vs RSS = runtime).
-#   - libcrypto.so/liboqs.so aggregate MANY algorithms - per-algorithm
-#     numbers are only possible via PQClean's per-scheme .a files:
-#     CODESIZE_LIBS="path/libml-kem-768_clean.a ..." scripts/measure_codesize.sh
-#   - clean-vs-avx2 (.a) quantifies the size cost of SIMD speed (Analysis).
 set -u
+ 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 # shellcheck disable=SC1091
 [ -f "$HERE/versions.env" ] && source "$HERE/versions.env" >/dev/null 2>&1 || true
-
+ 
 ARCH="$(uname -m)"
 OUT="$ROOT/data/codesize_${ARCH}.csv"
 mkdir -p "$ROOT/data"
-
+ 
+# Pick the libraries: CODESIZE_LIBS wins; else auto-find our OpenSSL + liboqs
 LIBS="${CODESIZE_LIBS:-}"
 if [ -z "$LIBS" ]; then
   for d in "${OSSL_PREFIX:-}/lib64" "${OSSL_PREFIX:-}/lib" \
@@ -33,18 +31,21 @@ if [ -z "$LIBS" ]; then
   done
 fi
 [ -z "$LIBS" ] && LIBS="$ROOT/build/bench_evp"     # fallback: the bench binary
-
+ 
 echo "file,text_bytes,data_bytes,bss_bytes,total_bytes" > "$OUT"
+ 
 for f in $LIBS; do
   [ -f "$f" ] || continue
-  # Use `size -t` and read the (TOTALS) line (last row): for a .so it equals the
-  # single object row, but for a .a (archive = MANY object rows) it is the true
-  # SUM. Plain `size | awk NR==2` took only the FIRST object of an archive
-  # (so libcrypto.a / per-scheme .a came out far too small). text data bss dec.
+  # Read the (TOTALS) line of `size -t` (last row). For a .so it equals the one
+  # object row; for a .a (archive = many objects) it is the true SUM. Plain
+  # `size | awk NR==2` took only the FIRST object of an archive (too small).
   read -r text data bss dec < <(size -t "$f" 2>/dev/null | tail -1 | awk '{print $1,$2,$3,$4}')
   if [ -n "${text:-}" ]; then
-    echo "$(basename "$f"),${text},${data},${bss},${dec}" >> "$OUT"
-    echo "==> $(basename "$f"): text=${text} data=${data} bss=${bss} total=${dec} bytes"
+    # Label = <prefix-dir>/<file> so OPT and REF liboqs.so don't collide
+    label="$(basename "$(dirname "$(dirname "$f")")")/$(basename "$f")"
+    echo "${label},${text},${data},${bss},${dec}" >> "$OUT"
+    echo "==> ${label}: text=${text} data=${data} bss=${bss} total=${dec} bytes"
   fi
 done
+ 
 echo "Code-size CSV: $OUT"

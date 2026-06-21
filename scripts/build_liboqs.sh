@@ -1,12 +1,14 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
 # build_liboqs.sh <ref|opt> - Build ONE liboqs tree.
+# 
 # Usage:
 #   bash scripts/build_liboqs.sh ref    # portable C build  -> $LIBOQS_PREFIX_REF
 #   bash scripts/build_liboqs.sh opt    # NEON/native build -> $LIBOQS_PREFIX_OPT
-#   USE_ARM_PMU=1 bash scripts/build_liboqs.sh opt   # + PMU cycle counter (ARM,
-#                                       requires kernel module; usually NOT
-#                                       possible on rented cloud VPS)
+# 
+# Environment variables:
+#   FORCE=1 bash scripts/build_liboqs.sh ref|opt  # rebuild over  
+#   USE_ARM_PMU=1 bash scripts/build_liboqs.sh opt   # + PMU cycle counter
 # =============================================================================
 set -eu
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

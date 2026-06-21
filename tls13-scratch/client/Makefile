@@ -1,27 +1,18 @@
-# tls13-scratch/client/Makefile -- TLS 1.3 client tu cuon protocol (track D, NT219).
-# LINK TINH libcrypto.a (xem ghi chu server/Makefile). Cung style illustrated-tls13.
-OSSLROOT ?= $(shell bash -c '. ../../scripts/versions.env 2>/dev/null && echo $$OSSL_PREFIX')
-ifeq ($(strip $(OSSLROOT)),)
-  OSSLROOT := $(HOME)/pqc/openssl
+# tls13-scratch/client/Makefile -- track D client, y chang illustrated-tls13.
+# Standard OpenSSL TLS 1.3 client (NOT hand-rolled). Links the project OpenSSL
+# 3.6.2 (native ML-KEM) so classical/hybrid/PQC groups are available.
+OSSL ?= $(shell bash -c '. ../../scripts/versions.env 2>/dev/null && echo $$OSSL_PREFIX')
+ifeq ($(strip $(OSSL)),)
+  OSSL := $(HOME)/pqc/openssl
 endif
-ifneq ($(wildcard $(OSSLROOT)/lib64/libcrypto.a),)
-  OSSLLIB := $(OSSLROOT)/lib64
-else ifneq ($(wildcard $(OSSLROOT)/lib/libcrypto.a),)
-  OSSLLIB := $(OSSLROOT)/lib
-endif
-ifdef OSSLLIB
-  CFLAGS += -I$(OSSLROOT)/include
-  OSSL   := $(OSSLLIB)/libcrypto.a -ldl
-else
-  OSSL   := -lcrypto
-endif
-COMMON  := ../common
-CFLAGS  += -I$(COMMON) -Wall -Wextra -O2 -pthread
-LDLIBS  := -lm
 
-client: client.c $(COMMON)/tls13.c $(COMMON)/tls13.h
-	$(CC) $(CFLAGS) -o client client.c $(COMMON)/tls13.c $(OSSL) $(LDLIBS)
+CFLAGS  += -I$(OSSL)/include -Wall
+LDFLAGS += -L$(OSSL)/lib64 -L$(OSSL)/lib -lssl -lcrypto -lpthread
+
+client: main.c
+	$(CC) $(CFLAGS) -o client main.c -Wall $(LDFLAGS)
 
 clean:
 	rm -f client
+
 .PHONY: clean

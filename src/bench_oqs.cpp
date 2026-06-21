@@ -1,74 +1,15 @@
 // ============================================================================
 // bench_oqs.cpp  —  Microbenchmark ML-KEM / ML-DSA via the liboqs API (NT219)
 //
-// liboqs-DIRECT counterpart of bench_evp.cpp. Where bench_evp.cpp measures the
-// algorithm "as called through OpenSSL EVP" (the real application path), this
-// harness calls the liboqs API directly (OQS_KEM_* / OQS_SIG_*). Purposes:
-//   (1) WP3 reference-vs-optimized (NEON / AVX2): compile ONCE, then LINK
-//       against TWO liboqs builds (build-opt / build-ref) and run each binary.
-//       The C++ is identical; only the linked library differs. See "REF vs OPT".
-//   (2) Cross-check: ML-KEM/ML-DSA numbers here should agree with the EVP path
-//       (bench_evp.cpp) within a small margin, evidence the measurement is sound.
-//
-// ----------------------------------------------------------------------------
-// STANDARDS & REFERENCE MAPPING  (every operation maps to a normative source)
-// ----------------------------------------------------------------------------
-//  ML-KEM — NIST FIPS 203 (Module-Lattice-Based KEM Standard, Aug 2024):
-//      keygen = ML-KEM.KeyGen()        [FIPS 203, Alg. 19]        -> OQS_KEM_keypair
-//      encap  = ML-KEM.Encaps(ek)      [FIPS 203, Alg. 20]        -> OQS_KEM_encaps
-//               ek -> (ciphertext c, shared secret K).  NO message input.
-//      decap  = ML-KEM.Decaps(dk, c)   [FIPS 203, Alg. 21]        -> OQS_KEM_decaps
-//               (dk, c) -> K.  "ML-KEM encaps/decaps only output a shared secret
-//               and ciphertext" (RFC 9936 Use of ML-KEM in CMS, Sec. 1).
-//      Sizes ek/dk/ct/ss per FIPS 203 — verified at runtime vs KEM_REF[] below.
-//
-//  ML-DSA — NIST FIPS 204 (Module-Lattice-Based Digital Signature Std, Aug 2024):
-//      keygen = ML-DSA.KeyGen()                                   -> OQS_SIG_keypair
-//      sign   = ML-DSA.Sign(sk, M)  (randomized / "hedged")       -> OQS_SIG_sign
-//      verify = ML-DSA.Verify(pk, M, sigma)                       -> OQS_SIG_verify
-//      Sizes pk/sk/sig per FIPS 204 Table 2 (also RFC 9964 / RFC 9881):
-//          ML-DSA-44 = 1312 / 2560 / 2420   (NIST level 2)
-//          ML-DSA-65 = 1952 / 4032 / 3309   (NIST level 3)
-//          ML-DSA-87 = 2592 / 4896 / 4627   (NIST level 5)
-//      Verified at runtime vs SIG_REF[] below.
-//
-//  HARNESS SHAPE — mirrors the official liboqs benchmarks
-//      tests/speed_kem.c  : TIME_OPERATION over OQS_KEM_keypair / _encaps /
-//                           _decaps on buffers allocated ONCE (fixed inputs).
-//      tests/speed_sig.c  : TIME_OPERATION over OQS_SIG_keypair / _sign /
-//                           _verify, fixed message filled with OQS_randombytes.
-//      tests/ds_benchmark.h : TIME_OPERATION_ITERATIONS(op,name,it) =
-//                           for(i<it){ START_TIMER{op;} STOP_TIMER } — the exact
-//                           shape of run_op() below.
-//   The per-op loop + discarded warm-up + correctness check + size capture also
-//   follows dcommey/pqc_evaluation (arXiv:2505.02239) and SUPERCOP/eBACS
-//   (Bernstein-Lange) practice (median of many runs; cycles + wall time).
-//   DIFFERENCE vs liboqs speed_*: we use a FIXED iteration count (like
-//   TIME_OPERATION_ITERATIONS) and report median / p95 / p99 / 95% CI (robust to
-//   outliers) instead of the duration-based ops/sec of TIME_OPERATION_SECONDS.
-//
-// ----------------------------------------------------------------------------
-//  USAGE
+//  Usage:
 //      ./bench_oqs <family> <param>     family: mlkem | mldsa
 //      e.g. ./bench_oqs mlkem 768       ./bench_oqs mldsa 65
 //      (a full liboqs name also works:  ./bench_oqs ML-KEM-1024)
-//   Env (no recompile; same names/format as bench_evp.cpp so analyze.py reuses):
+//  Enviroment variables:
 //      BENCH_ITERS        (default 2000) iterations for fast ops
 //      BENCH_KEYGEN_ITERS (default 200)  keygen is slower -> fewer iterations
 //      BENCH_WARMUP       (default 20)   warm-up iterations discarded
 //      BENCH_CSV=path                     raw per-iteration CSV (algo,op,iter,...)
-//
-//  REF vs OPT (the WP3 experiment) — build liboqs TWICE on the SAME machine:
-//      cmake -S liboqs -B build-opt -DOQS_DIST_BUILD=OFF -DOQS_OPT_TARGET=auto -DOQS_USE_ARM_NEON_INSTRUCTIONS=ON -DBUILD_SHARED_LIBS=ON && cmake --build build-opt
-//      cmake -S liboqs -B build-ref -DOQS_DIST_BUILD=OFF -DOQS_OPT_TARGET=generic -DOQS_USE_ARM_NEON_INSTRUCTIONS=OFF -DBUILD_SHARED_LIBS=ON && cmake --build build-ref
-//      g++ -O2 -std=c++17 bench_oqs.cpp -I build-opt/include -L build-opt/lib -loqs -Wl,-rpath,build-opt/lib -o bench_oqs_opt
-//      g++ -O2 -std=c++17 bench_oqs.cpp -I build-ref/include -L build-ref/lib -loqs -Wl,-rpath,build-ref/lib -o bench_oqs_ref
-//      ./bench_oqs_opt mlkem 768   ;   ./bench_oqs_ref mlkem 768   # compare
-//
-//  NOTE: liboqs ONLY (link -loqs); no OpenSSL EVP. Cycles on aarch64 use
-//  CNTVCT_EL0 (a VIRTUAL timer at fixed frequency, NOT a true core cycle) — for
-//  accurate cycles on the Pi enable the PMU via a kernel module (the same thing
-//  liboqs' own OQS_SPEED_USE_ARM_PMU / mupq-pqax do). wall-ns is the primary metric.
 // ============================================================================
 
 #include <oqs/oqs.h>

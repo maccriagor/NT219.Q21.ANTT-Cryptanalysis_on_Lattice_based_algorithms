@@ -1,18 +1,19 @@
 // =============================================================================
 // bench_evp.cpp  —  Microbenchmark cryptographic primitives via OpenSSL 3.x EVP 
-// Run:
+//  
+// Usage:
 //   ./build/bench_evp <family> <param>
 //   family: rsa | ecdsa | ecdh | mlkem | mldsa
 //   e.g.: ./build/bench_evp rsa 2048      ./build/bench_evp ecdsa p256
 //         ./build/bench_evp mlkem 768     ./build/bench_evp mldsa 65   (needs OpenSSL >= 3.5)
-//
-// Method (microbenchmark): for each operation, run N iterations (from env).
+// 
+// Enviroment variables: 
 //   BENCH_ITERS        (default 2000)  -- iterations for fast ops
 //   BENCH_KEYGEN_ITERS (default 50)    -- keygen is slow so fewer iterations
 //   BENCH_WARMUP       (default 20)    -- warm-up iterations discarded (cache/lazy-init)
 //   BENCH_CSV=path                      -- if set, write raw samples to CSV
 //
-// Build (RECOMMENDED to use the Makefile, do NOT run g++ by hand):
+// Build (Use the Makefile, do NOT run g++ by hand):
 //   make                              # system OpenSSL
 //   make OSSLROOT=/pqc/openssl        # self-built OpenSSL (PQC native)
 // =============================================================================
