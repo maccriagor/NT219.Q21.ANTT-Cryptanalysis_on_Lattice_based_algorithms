@@ -1,0 +1,5 @@
+file,text_bytes,data_bytes,bss_bytes,total_bytes
+openssl/libcrypto.so,5449391,491768,12752,5953911
+openssl/libcrypto.a,4455560,486871,12662,4955093
+liboqs-neon/liboqs.so,5184284,11224,91540,5287048
+liboqs-ref/liboqs.so,3164535,8728,19892,3193155

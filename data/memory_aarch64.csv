@@ -1,0 +1,16 @@
+algo,peak_rss_kb
+rsa-3072,6852
+rsa-7680,6920
+rsa-15360,7008
+ecdsa-p256,6996
+ecdsa-p384,6940
+ecdsa-p521,6940
+ecdh-p256,6956
+ecdh-p384,6892
+ecdh-p521,6896
+mlkem-512,6868
+mlkem-768,6876
+mlkem-1024,6880
+mldsa-44,7000
+mldsa-65,7068
+mldsa-87,7040

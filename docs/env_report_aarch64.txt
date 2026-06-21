@@ -1,4 +1,4 @@
-environment report, 2026-06-20T17:09:30Z
+environment report, 2026-06-21T13:01:35Z
 uname: Linux rpi-bookworm-arm64 6.1.21-v8+ #1642 SMP PREEMPT Mon Apr  3 17:24:16 BST 2023 aarch64 GNU/Linux
 cpu: Cortex-A72 (4 cores)
 cpu governor: ondemand
@@ -10,5 +10,5 @@ perl: v5.36.0
 openssl: OpenSSL 3.6.2 7 Apr 2026 (Library: OpenSSL 3.6.2 7 Apr 2026) (prefix /root/pqc/openssl)
 ML-KEM algorithms: 3, ML-DSA algorithms: 3
 openssl commit: fe686e15d84334b284f883118ed92f64b409b3aa
-liboqs commit: n/a
+liboqs commit: 94b421ebb82405c843dba4e9aa521a56ee5a333d
 build flags: RELEASE := -O3 -g2 -DNDEBUG
