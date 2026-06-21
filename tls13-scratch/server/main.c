@@ -78,6 +78,15 @@ void configure_context(SSL_CTX *ctx, const char *cert, const char *key)
 {
 	if (!SSL_CTX_set_ecdh_auto(ctx, 1))
 		die("Unable to set ECDH curves");
+	/* Offer every group we benchmark, incl. PURE ML-KEM (NOT in OpenSSL's
+	   default list) so a client proposing only MLKEM768 can negotiate.
+	   The file header comment is wrong for pure ML-KEM: the default list
+	   carries hybrid X25519MLKEM768 but not standalone MLKEM*. */
+	if (!SSL_CTX_set1_groups_list(ctx,
+		"X25519MLKEM768:SecP256r1MLKEM768:SecP384r1MLKEM1024:"
+		"MLKEM512:MLKEM768:MLKEM1024:"
+		"x25519:x448:secp256r1:secp384r1:secp521r1"))
+		die("Unable to set TLS groups");
 	if (!SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM))
 		die("Unable to load cert");
 	if (!SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM))
